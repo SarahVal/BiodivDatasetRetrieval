@@ -1,0 +1,27 @@
+type_dataset;keywords;keywords_type
+presence only;presence only;synonym
+presence only;occurrence;synonym
+presence only;specimen records;synonym
+presence only;specimen;synonym
+presence only;collection;synonym
+presence-absence;presence-absence;synonym
+presence-absence;sampling plot;methods
+presence-absence;relative proportion;methods
+presence-absence;inventory;methods
+presence-absence;occupancy;methods
+richness;richness;synonym
+abundance;abundance;synonym
+abundance;capture-mark-recapture;methods
+abundance;relative proportion;synonym
+abundance;percent cover;methods
+density;density;synonym
+distribution;distribution;synonym
+distribution;range;synonym
+distribution;habitat suitability;synonym
+distribution;niche;synonym
+distribution;species distribution model;methods
+abundance;camera-trap;methods
+density;quadrat;methods
+abundance;quadrat;methods
+presence-absence;quadrat;methods
+abundance;counts;methods
