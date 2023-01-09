@@ -4,55 +4,7 @@ import requests
 import regex as re
 import pandas as pd
 
-def request_semantic(keyword, page=1, min_year=2018, max_year=2022):
 
-        headers = {
-            "Connection": "keep-alive",
-            "sec-ch-ua": '"Google Chrome";v="95", "Chromium";v="95", ";Not A Brand";v="99"',
-            "Cache-Control": "no-cache,no-store,must-revalidate,max-age=-1",
-            "Content-Type": "application/json",
-            "sec-ch-ua-mobile": "?1",
-            "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Mobile Safari/537.36",
-            "X-S2-UI-Version": "20166f1745c44b856b4f85865c96d8406e69e24f",
-            "sec-ch-ua-platform": '"Android"',
-            "Accept": "*/*",
-            "Origin": "https://www.semanticscholar.org",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Dest": "empty",
-            #"Referer": "https://www.semanticscholar.org/search?year%5B0%5D=2018&year%5B1%5D=2022&q=multi%20label%20text%20classification&sort=relevance",
-            "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-        }
-
-        data = json.dumps(
-            {
-                "queryString": f"{keyword.lower()}",
-                "page": page,
-                "pageSize": 10,
-                 "sort": "relevance",
-                "authors": [],
-                "coAuthors": [],
-                "venues": [],
-                "yearFilter": {"min": min_year, "max": max_year},
-                "requireViewablePdf": False,
-                "publicationTypes": [],
-                "externalContentTypes": [],
-                "fieldsOfStudy": [],
-                "useFallbackRankerService": False,
-                "useFallbackSearchCluster": True,
-                "hydrateWithDdb": True,
-                "includeTldrs": True,
-                "performTitleMatch": True,
-                "includeBadges": True,
-                "tldrModelVersion": "v2.0.0",
-                "getQuerySuggestions": False,
-            }
-        )
-
-        response = requests.post(
-            "https://www.semanticscholar.org/api/1/search", headers=headers, data=data
-        )
-        return response
     
 def conv_query(x):
     l = [y.strip() for y in x.split("AND")]
@@ -117,6 +69,23 @@ def extract_zenodo(entry, i_query):
            i_query])
 
 def extract_semantic_scholar(entry, i_query):
+    entry = entry.json()
+    rows = []
+    doi = ""
+    if "DOI" in entry["externalIds"].keys():
+        doi = entry["externalIds"]["DOI"]
+    
+    return([doi,
+            entry["url"],
+    entry["venue"],
+    entry["title"],
+    entry['abstract'],
+    entry["year"],
+           i_query])
+
+
+
+def extract_semantic_scholar_old(entry, i_query):
     rows = []
     entry = entry.json()["results"]
 
@@ -197,7 +166,66 @@ def get_plural(sg):
         pl = engine.plural(sg)
     return(pl)
 
-def retrieve_semantic(queries, nb_pages = 5, min_year=1980, max_year=2022):
+
+def retrieve_semantic(queries, offset = 0, limit = 100, year_min = 1980, year_max = None):
+    if year_max is not None:
+        year = "{0}-{1}".format(year_min, year_max)
+    else :
+        year = "{0}-".format(year_min)
+    
+    rows = []
+    for i, query in queries.items():
+        query_vars = get_query_var(query, pl = True, a = False)  # Generate queries variants (1) Québec/Quebec and (2) plural forms
+        r = []
+        for q in query_vars:
+            q = "+".join(q)
+            response = requests.get("http://api.semanticscholar.org/graph/v1/paper/search?query={0}&offset={1}&limit={2}&year={3}".format(q, offset, limit, year))
+            print("http://api.semanticscholar.org/graph/v1/paper/search?query={0}&offset={1}&limit={2}&year={3}".format(q, offset, limit, year))
+            for entry in response.json()["data"]:
+                content = requests.get("https://api.semanticscholar.org/graph/v1/paper/{0}?fields=url,externalIds,title,venue,year,abstract".format(entry["paperId"]))
+
+                r.append(extract_semantic_scholar(content, i))
+    rows = rows + r
+    df = pd.DataFrame(rows)
+    df.columns = ["doi", "url", "journal", "title", "description", "publication_date", "id_query"]
+    df["source"] = "semantic_scholar"
+    df['id_query'] = df['id_query'].astype(str)   
+    df['id_query'] = df.groupby(['url'])['id_query'].transform(lambda x: ','.join(list(set(x))))
+    df = df.drop_duplicates(subset = ["url"])
+    return(df)
+
+
+
+def retrieve_zenodo(queries):
+    rows = []
+    for i, query in queries.items():
+        query_vars = get_query_var(query)  # Generate queries variants (1) Québec/Quebec and (2) plural forms
+        r = []
+        for q in query_vars:
+            q = "+"+" +".join(q)
+            #print("Searching for query...")
+           # print(q)
+            response = requests.get('https://zenodo.org/api/records',
+                                params={'q': q,
+                                        "type" : "dataset", 
+                                        "size":1000,
+                                        'access_token': "Mf4LxV3d12BadrTyBke4vKphD6SO59ILOCHKGlQBbrcuKWMPlcUG51jBCA7p"})
+            for j in range(0, len(response.json()["hits"]["hits"])):
+                entry = response.json()["hits"]["hits"][j]
+                r.append(extract_zenodo(entry, i))
+            r = [list(x) for x in set(tuple(x) for x in r)]
+            rows = rows + r
+    df = pd.DataFrame(rows)
+    df.columns = ["url", "title", "description", "method", "notes", "keywords", "locations", "publication_date", "cited_articles", "id_query"]
+    df["source"] = "zenodo"
+    df['url'] = df['url'].apply(lambda row : "https://doi.org/" + row)
+    df['id_query'] = df['id_query'].astype(str)   
+    df['id_query'] = df.groupby(['url'])['id_query'].transform(lambda x: ','.join(list(set(x))))
+    df = df.drop_duplicates(subset = ["url"])
+    return(df)
+
+
+def retrieve_semantic_old(queries, nb_pages = 5, min_year=1980, max_year=2022):
     rows = []
     for i, query in queries.items():
         query_vars = get_query_var(query, a = False)  # Generate queries variants (1) Québec/Quebec and (2) plural forms
@@ -230,30 +258,52 @@ def retrieve_semantic(queries, nb_pages = 5, min_year=1980, max_year=2022):
     df = df.drop_duplicates(subset = ["url"])
     return(df)
 
-def retrieve_zenodo(queries):
-    rows = []
-    for i, query in queries.items():
-        query_vars = get_query_var(query)  # Generate queries variants (1) Québec/Quebec and (2) plural forms
-        r = []
-        for q in query_vars:
-            q = "+"+" +".join(q)
-            #print("Searching for query...")
-           # print(q)
-            response = requests.get('https://zenodo.org/api/records',
-                                params={'q': q,
-                                        "type" : "dataset", 
-                                        "size":1000,
-                                        'access_token': "Mf4LxV3d12BadrTyBke4vKphD6SO59ILOCHKGlQBbrcuKWMPlcUG51jBCA7p"})
-            for j in range(0, len(response.json()["hits"]["hits"])):
-                entry = response.json()["hits"]["hits"][j]
-                r.append(extract_zenodo(entry, i))
-            r = [list(x) for x in set(tuple(x) for x in r)]
-            rows = rows + r
-    df = pd.DataFrame(rows)
-    df.columns = ["url", "title", "description", "method", "notes", "keywords", "locations", "publication_date", "cited_articles", "id_query"]
-    df["source"] = "zenodo"
-    df['url'] = df['url'].apply(lambda row : "https://doi.org/" + row)
-    df['id_query'] = df['id_query'].astype(str)   
-    df['id_query'] = df.groupby(['url'])['id_query'].transform(lambda x: ','.join(list(set(x))))
-    df = df.drop_duplicates(subset = ["url"])
-    return(df)
+def request_semantic(keyword, page=1, min_year=2018, max_year=2022):
+
+        headers = {
+            "Connection": "keep-alive",
+            "sec-ch-ua": '"Google Chrome";v="95", "Chromium";v="95", ";Not A Brand";v="99"',
+            "Cache-Control": "no-cache,no-store,must-revalidate,max-age=-1",
+            "Content-Type": "application/json",
+            "sec-ch-ua-mobile": "?1",
+            "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Mobile Safari/537.36",
+            "X-S2-UI-Version": "20166f1745c44b856b4f85865c96d8406e69e24f",
+            "sec-ch-ua-platform": '"Android"',
+            "Accept": "*/*",
+            "Origin": "https://www.semanticscholar.org",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Dest": "empty",
+            #"Referer": "https://www.semanticscholar.org/search?year%5B0%5D=2018&year%5B1%5D=2022&q=multi%20label%20text%20classification&sort=relevance",
+            "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
+        }
+
+        data = json.dumps(
+            {
+                "queryString": f"{keyword.lower()}",
+                "page": page,
+                "pageSize": 10,
+                 "sort": "relevance",
+                "authors": [],
+                "coAuthors": [],
+                "venues": [],
+                "yearFilter": {"min": min_year, "max": max_year},
+                "requireViewablePdf": False,
+                "publicationTypes": [],
+                "externalContentTypes": [],
+                "fieldsOfStudy": [],
+                "useFallbackRankerService": False,
+                "useFallbackSearchCluster": True,
+                "hydrateWithDdb": True,
+                "includeTldrs": True,
+                "performTitleMatch": True,
+                "includeBadges": True,
+                "tldrModelVersion": "v2.0.0",
+                "getQuerySuggestions": False,
+            }
+        )
+
+        response = requests.post(
+            "https://www.semanticscholar.org/api/1/search", headers=headers, data=data
+        )
+        return response
