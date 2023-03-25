@@ -1,0 +1,809 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Overview of retrieved datasets},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+
+\title{Overview of retrieved datasets}
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+\maketitle
+
+\textbf{Script description:} This script manipulates the raw data of the
+retrieved datasets to show summary tables and figures.
+
+\textbf{Script structure:}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Number of datasets and relevance categories.2. Queries performance -
+  3. Temporal duration - 4. Spatial range - 5. Temporal duration,
+  spatial range, and relevance - 6. EBV data types - 7. Data format - 8.
+  Datasets accessibility and relevance per year
+\end{enumerate}
+
+(TODO)
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{8}
+\item
+  Journals
+\item
+  Taxonomic coverage
+\item
+  Dataset location
+\item
+  Temporal and spatial information location
+\end{enumerate}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(dplyr)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: replacing previous import 'lifecycle::last_warnings' by
+## 'rlang::last_warnings' when loading 'pillar'
+\end{verbatim}
+
+\begin{verbatim}
+## Warning: replacing previous import 'lifecycle::last_warnings' by
+## 'rlang::last_warnings' when loading 'tibble'
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'dplyr'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(reshape)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'reshape'
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:dplyr':
+## 
+##     rename
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(hrbrthemes)}
+\FunctionTok{library}\NormalTok{(ggpubr)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: replacing previous import 'lifecycle::last_warnings' by
+## 'rlang::last_warnings' when loading 'hms'
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{source}\NormalTok{(}\StringTok{"Functions.R"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Some parameters for the plots:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{my.theme}\OtherTok{\textless{}{-}}\FunctionTok{theme}\NormalTok{(}\AttributeTok{axis.text=}\FunctionTok{element\_text}\NormalTok{(}\AttributeTok{size=}\DecValTok{15}\NormalTok{),}
+        \AttributeTok{axis.title =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{size =} \DecValTok{17}\NormalTok{),}
+        \AttributeTok{legend.text=}\FunctionTok{element\_text}\NormalTok{(}\AttributeTok{size=}\DecValTok{10}\NormalTok{),}
+        \AttributeTok{legend.title =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{size=}\DecValTok{12}\NormalTok{),}
+        \AttributeTok{plot.title =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{face=}\StringTok{"bold"}\NormalTok{,}\AttributeTok{size=}\DecValTok{14}\NormalTok{,}\AttributeTok{margin=}\FunctionTok{margin}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{20}\NormalTok{,}\DecValTok{0}\NormalTok{),}\AttributeTok{hjust =} \FloatTok{0.5}\NormalTok{),}
+        \AttributeTok{axis.title.y =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{margin =} \FunctionTok{margin}\NormalTok{(}\AttributeTok{t =} \DecValTok{0}\NormalTok{, }\AttributeTok{r =} \DecValTok{10}\NormalTok{, }\AttributeTok{b =} \DecValTok{0}\NormalTok{, }\AttributeTok{l =} \DecValTok{0}\NormalTok{)),}
+        \AttributeTok{axis.title.x =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{margin =} \FunctionTok{margin}\NormalTok{(}\AttributeTok{t =} \DecValTok{15}\NormalTok{, }\AttributeTok{r =} \DecValTok{0}\NormalTok{, }\AttributeTok{b =} \DecValTok{0}\NormalTok{, }\AttributeTok{l =} \DecValTok{0}\NormalTok{)),}
+        \AttributeTok{panel.background =} \FunctionTok{element\_rect}\NormalTok{(}\AttributeTok{fill =} \StringTok{\textquotesingle{}white\textquotesingle{}}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{read-data}{%
+\paragraph{Read data}\label{read-data}}
+
+Eliminate empty rows and those where dataset\_relevance is left in blank
+(they correspond to referred publications in the retrieved datasets and
+are not used in these analyses):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dataset }\OtherTok{\textless{}{-}} \FunctionTok{read.csv}\NormalTok{(}\StringTok{"091222\_Merged\_datasets.csv"}\NormalTok{, }\AttributeTok{header =} \ConstantTok{TRUE}\NormalTok{)}
+
+\NormalTok{dataset }\OtherTok{\textless{}{-}}\NormalTok{ dataset[dataset}\SpecialCharTok{$}\NormalTok{dataset\_relevance }\SpecialCharTok{!=} \StringTok{""}\NormalTok{,]}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{number-of-datasets-and-relevance-categories}{%
+\subsection{1. Number of datasets and relevance
+categories}\label{number-of-datasets-and-relevance-categories}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{total\_publications }\OtherTok{\textless{}{-}} \FunctionTok{length}\NormalTok{(dataset}\SpecialCharTok{$}\NormalTok{dataset\_relevance)}
+
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"A total of"}\NormalTok{, total\_publications, }\StringTok{"publications retrieved"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "A total of 292 publications retrieved"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dataset}\SpecialCharTok{$}\NormalTok{dataset\_relevance }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(dataset}\SpecialCharTok{$}\NormalTok{dataset\_relevance)}
+
+\NormalTok{df\_N\_relevance }\OtherTok{\textless{}{-}} \FunctionTok{count\_by\_relevance}\NormalTok{(dataset)}
+
+\NormalTok{df\_N\_relevance}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   dataset relevance  N
+## 4                 L 69
+## 6        No dataset 59
+## 5                 M 55
+## 7                 X 54
+## 3                 H 30
+## 2       cant access 22
+## 1                 X  2
+\end{verbatim}
+
+\hypertarget{queries-performance}{%
+\subsection{2. Queries performance}\label{queries-performance}}
+
+\hypertarget{n-publications-and-relevance-categories-per-query}{%
+\subsubsection{2.1. N publications and relevance categories per
+query}\label{n-publications-and-relevance-categories-per-query}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dataset}\SpecialCharTok{$}\NormalTok{id\_query }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(dataset}\SpecialCharTok{$}\NormalTok{id\_query)}
+
+\NormalTok{df\_queries\_counts }\OtherTok{\textless{}{-}} \FunctionTok{compute\_df\_n\_relevance\_queries}\NormalTok{(}\AttributeTok{data =}\NormalTok{ dataset)}
+
+\NormalTok{df\_queries\_counts}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      queries n_publications n_high n_moderate n_low n_non_relevant n_no_dataset
+## 1    0,6,5,7              1      0          0     0              1            0
+## 2          1             12      0          1     2             14            2
+## 3         10              8      1          3     3              1            0
+## 4          2             11      0          1     4              2            4
+## 5          3             52     10         10    15             31            0
+## 6          4             69      5         14    18              7           19
+## 7          5             21      1          5     3              2            5
+## 8  5,6,7,8,9              1      0          1     0              0            0
+## 9          6             32      1          8    10              3            8
+## 10       6,7              1      0          1     0              0            0
+## 11     6,7,5              1      1          0     0              0            0
+## 12     6,7,9              1      0          0     0              1            0
+## 13         7             16      1          2     4              2            7
+## 14       7,2              1      0          0     1              0            0
+## 15     7,2,9              1      0          0     0              1            0
+## 16       7,8              1      0          1     0              0            0
+## 17         8             15      0          2     3              0            9
+\end{verbatim}
+
+Plot the results:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_queries\_relevance }\OtherTok{\textless{}{-}} \FunctionTok{plot\_queries\_relevance\_raw}\NormalTok{(df\_queries\_counts)}
+
+\NormalTok{plot\_queries\_relevance}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-7-1.pdf}
+
+\begin{itemize}
+\item
+  Query 4 delivers the highest number of relevant datasets (highest
+  number of High, Moderate and Low relevance datasets), but also
+  retrieves by far the higher amount of publication.
+\item
+  Some queries do not add any relevant publication (e.g.~``0,6,5,7'' or
+  ``7,2,9'').
+\end{itemize}
+
+\hypertarget{classify-queries-by-their-relevance-index}{%
+\subsubsection{2.2 Classify queries by their relevance
+(index)}\label{classify-queries-by-their-relevance-index}}
+
+Puctuations for the relevance categories:
+
+\begin{itemize}
+\tightlist
+\item
+  High = 5
+\item
+  Mod = 2
+\item
+  Low = 0.5
+\item
+  non\_relevant = 0
+\end{itemize}
+
+\emph{Index 1}: is the result of summing the puntuations assigned to
+each relevance category
+
+Index 1 = sum punctuations = (N High * 5) + (N Mod * 2) + (N Low * 0.5)
+
+\emph{Index 2}: is the Index1 but accounting for the total number of
+publications retrieved by the query.
+
+Index 2 = sum punctuations / n publications retrieved
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_queries\_counts\_index }\OtherTok{\textless{}{-}} \FunctionTok{compute\_index12}\NormalTok{(}\AttributeTok{df\_counts =}\NormalTok{ df\_queries\_counts, }\AttributeTok{order\_based\_index =} \StringTok{"2"}\NormalTok{) }\CommentTok{\# "1" for ordering according to index 1, "2" for index 2}
+
+\NormalTok{df\_queries\_counts\_index}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      queries n_publications n_high n_moderate n_low n_non_relevant n_no_dataset
+## 11     6,7,5              1      1          0     0              0            0
+## 8  5,6,7,8,9              1      0          1     0              0            0
+## 10       6,7              1      0          1     0              0            0
+## 16       7,8              1      0          1     0              0            0
+## 3         10              8      1          3     3              1            0
+## 5          3             52     10         10    15             31            0
+## 6          4             69      5         14    18              7           19
+## 9          6             32      1          8    10              3            8
+## 7          5             21      1          5     3              2            5
+## 13         7             16      1          2     4              2            7
+## 14       7,2              1      0          0     1              0            0
+## 17         8             15      0          2     3              0            9
+## 4          2             11      0          1     4              2            4
+## 2          1             12      0          1     2             14            2
+## 1    0,6,5,7              1      0          0     0              1            0
+## 12     6,7,9              1      0          0     0              1            0
+## 15     7,2,9              1      0          0     0              1            0
+##    index1    index2
+## 11    5.0 5.0000000
+## 8     2.0 2.0000000
+## 10    2.0 2.0000000
+## 16    2.0 2.0000000
+## 3    12.5 1.5625000
+## 5    77.5 1.4903846
+## 6    62.0 0.8985507
+## 9    26.0 0.8125000
+## 7    16.5 0.7857143
+## 13   11.0 0.6875000
+## 14    0.5 0.5000000
+## 17    5.5 0.3666667
+## 4     4.0 0.3636364
+## 2     3.0 0.2500000
+## 1     0.0 0.0000000
+## 12    0.0 0.0000000
+## 15    0.0 0.0000000
+\end{verbatim}
+
+Queries 3, 4, 0, and 6 are the top 4 index1 values. Queries 3 and 4 have
+far higher index than the rest.
+
+Plot the results:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_queries\_index12 }\OtherTok{\textless{}{-}} \FunctionTok{plot\_queries\_index}\NormalTok{(}\AttributeTok{df =}\NormalTok{ df\_queries\_counts\_index)}
+
+\NormalTok{plot\_queries\_index12}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-9-1.pdf}
+
+\begin{itemize}
+\item
+  Index 1 shows that queries ``3'' and ``4'' offer the higher
+  perfomance, followed by ``6'' and ``5''.
+\item
+  Index 2 shows that querie ``6,7,5'' offer the highest performance,
+  followed by ``7,8'', ``6,7'', and ``5,6,7,8,9''
+\end{itemize}
+
+\hypertarget{temporal-duration}{%
+\subsection{3. Temporal duration}\label{temporal-duration}}
+
+\hypertarget{temporal-duration-counts}{%
+\subsubsection{3.1 Temporal duration
+counts}\label{temporal-duration-counts}}
+
+How many publications without temporal duration data?
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{nNa }\OtherTok{\textless{}{-}} \FunctionTok{count\_not.reported\_temporal.duration}\NormalTok{(dataset)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning in count_not.reported_temporal.duration(dataset): NAs introducidos por
+## coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(nNa, }\StringTok{"publications without temporal duration data"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "33 publications without temporal duration data"
+\end{verbatim}
+
+Publication counts by temporal duration (years):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_duration\_counts }\OtherTok{\textless{}{-}} \FunctionTok{count\_durations}\NormalTok{(}\AttributeTok{df =}\NormalTok{ dataset, }\AttributeTok{order\_by =} \StringTok{"counts"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning in count_durations(df = dataset, order_by = "counts"): NAs introducidos
+## por coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_duration\_counts}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    temporal_duration counts
+## 1                  1     23
+## 2                  2     12
+## 6                  6      7
+## 3                  3      6
+## 4                  4      5
+## 7                  7      3
+## 18                20      3
+## 8                  8      2
+## 9                  9      2
+## 10                10      2
+## 11                11      2
+## 15                15      2
+## 21                24      2
+## 23                30      2
+## 24                40      2
+## 5                  5      1
+## 12                12      1
+## 13                13      1
+## 14                14      1
+## 16                16      1
+## 17                19      1
+## 19                21      1
+## 20                22      1
+## 22                25      1
+## 25                43      1
+## 26                45      1
+## 27                46      1
+## 28                50      1
+\end{verbatim}
+
+Plot the results:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_temp\_duration }\OtherTok{\textless{}{-}} \FunctionTok{plot\_duration\_counts}\NormalTok{(}\AttributeTok{df =}\NormalTok{ df\_duration\_counts, }
+                                           \AttributeTok{counts\_Na =}\NormalTok{ nNa)}
+
+\NormalTok{plot\_temp\_duration}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-12-1.pdf}
+
+Average duration (for those with data):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dataset\_temp\_duration }\OtherTok{\textless{}{-}} \FunctionTok{subset}\NormalTok{(dataset, }
+\NormalTok{                                  temporal\_duration\_y }\SpecialCharTok{\textgreater{}} \DecValTok{0} \SpecialCharTok{|}\NormalTok{ temporal\_duration\_y }\SpecialCharTok{==} \StringTok{"no"}\NormalTok{,}
+                                  \AttributeTok{select =} \FunctionTok{c}\NormalTok{(temporal\_duration\_y,id\_query))}
+  
+\NormalTok{  dataset\_temp\_duration}\SpecialCharTok{$}\NormalTok{temporal\_duration\_y }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(dataset\_temp\_duration}\SpecialCharTok{$}\NormalTok{temporal\_duration\_y)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: NAs introducidos por coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"mean of"}\NormalTok{,}
+            \FunctionTok{round}\NormalTok{(}\FunctionTok{mean}\NormalTok{(}\FunctionTok{na.omit}\NormalTok{(dataset\_temp\_duration}\SpecialCharTok{$}\NormalTok{temporal\_duration\_y)),}\AttributeTok{digits =} \DecValTok{1}\NormalTok{),}
+            \StringTok{"years"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "mean of 9.5 years"
+\end{verbatim}
+
+\hypertarget{temporal-duration-counts-per-relevance-category}{%
+\subsubsection{3.1 Temporal duration counts per relevance
+category}\label{temporal-duration-counts-per-relevance-category}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_duration\_relevance.categories }\OtherTok{\textless{}{-}} \FunctionTok{plot\_duration\_relevance}\NormalTok{(}\AttributeTok{df =}\NormalTok{ dataset,}
+                                                              \AttributeTok{counts\_Na =}\NormalTok{ nNa)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning in plot_duration_relevance(df = dataset, counts_Na = nNa): NAs
+## introducidos por coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_duration\_relevance.categories}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: Removed 120 rows containing non-finite values (stat_boxplot).
+\end{verbatim}
+
+\begin{verbatim}
+## Warning: Removed 120 rows containing missing values (geom_point).
+\end{verbatim}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-14-1.pdf}
+
+\hypertarget{spatial-range}{%
+\subsection{4. Spatial range}\label{spatial-range}}
+
+\hypertarget{count-spatial-range-publications}{%
+\subsubsection{4.1 count spatial range
+publications}\label{count-spatial-range-publications}}
+
+WARNING: publications that cant be accessed are not counted
+
+How many publications without spatial range data?
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{n\_not\_reported }\OtherTok{\textless{}{-}} \FunctionTok{count\_not.reported\_spatial\_range}\NormalTok{(dataset)}
+
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(n\_not\_reported, }\StringTok{"publications without spatial range data"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "46 publications without spatial range data"
+\end{verbatim}
+
+Spatial ranges are divided according to the thresholds established to
+determine a low, moredate and high spatial range: \textless5000,
+500-15000, \textgreater15000
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_spatial\_range\_counts }\OtherTok{\textless{}{-}} \FunctionTok{plot\_spat.range\_counts}\NormalTok{(dataset)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning in plot_spat.range_counts(dataset): NAs introducidos por coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_spatial\_range\_counts}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-16-1.pdf}
+
+Average spatial range (for those with data):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dataset1 }\OtherTok{\textless{}{-}}\NormalTok{ dataset[dataset}\SpecialCharTok{$}\NormalTok{dataset\_relevance }\SpecialCharTok{!=} \StringTok{"cant access"}\NormalTok{,]}
+  
+\NormalTok{  dataset1}\SpecialCharTok{$}\NormalTok{dataset\_relevance }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(dataset1}\SpecialCharTok{$}\NormalTok{dataset\_relevance)}
+  
+\NormalTok{  spatial\_range\_km2\_vec }\OtherTok{\textless{}{-}}\NormalTok{ dataset1}\SpecialCharTok{$}\NormalTok{spatial\_range\_km2[dataset1}\SpecialCharTok{$}\NormalTok{spatial\_range\_km2 }\SpecialCharTok{!=} \StringTok{""}\NormalTok{]}
+  
+\NormalTok{  spatial\_range\_km2\_vec }\OtherTok{\textless{}{-}}\NormalTok{ spatial\_range\_km2\_vec[}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(spatial\_range\_km2\_vec)]}
+  
+\NormalTok{  spatial\_range\_km2\_vec }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(spatial\_range\_km2\_vec) }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: NAs introducidos por coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"mean of"}\NormalTok{,}
+            \FunctionTok{round}\NormalTok{(}\FunctionTok{mean}\NormalTok{(}\FunctionTok{na.omit}\NormalTok{(spatial\_range\_km2\_vec)), }\AttributeTok{digits =} \DecValTok{0}\NormalTok{),}
+            \StringTok{"km2"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "mean of 973065 km2"
+\end{verbatim}
+
+\hypertarget{temporal-duration-spatial-range-relevance}{%
+\subsection{5. Temporal duration, spatial range,
+relevance}\label{temporal-duration-spatial-range-relevance}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_spatial\_temporal\_relevance }\OtherTok{\textless{}{-}} \FunctionTok{plot\_spat\_temp\_relevance}\NormalTok{(}\AttributeTok{df =}\NormalTok{ dataset)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning in plot_spat_temp_relevance(df = dataset): NAs introducidos por coerción
+
+## Warning in plot_spat_temp_relevance(df = dataset): NAs introducidos por coerción
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_spatial\_temporal\_relevance}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-18-1.pdf}
+
+\hypertarget{ebv-data-types}{%
+\subsection{6. EBV data types}\label{ebv-data-types}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_data\_type\_counts }\OtherTok{\textless{}{-}} \FunctionTok{compute\_df\_data.type}\NormalTok{(}\AttributeTok{df =}\NormalTok{ dataset)}
+
+\NormalTok{df\_data\_type\_counts}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      data_type_col N_articles percentage
+## 1    presence.only         62 32.6315789
+## 2 presence.absence         15  7.8947368
+## 3        abundance         59 31.0526316
+## 4      EBV_genetic         29 15.2631579
+## 5 genetic_analyses          1  0.5263158
+## 6     distribution          4  2.1052632
+## 7            other         20 10.5263158
+\end{verbatim}
+
+Plot the results
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_data\_type }\OtherTok{\textless{}{-}} \FunctionTok{plot\_data.type\_counts}\NormalTok{(df\_data\_type\_counts)}
+
+\NormalTok{plot\_data\_type}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-20-1.pdf}
+
+\hypertarget{data-format}{%
+\subsection{7. Data format}\label{data-format}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_data\_format\_counts }\OtherTok{\textless{}{-}} \FunctionTok{plot\_data.type\_format}\NormalTok{(dataset)}
+
+\NormalTok{plot\_data\_format\_counts}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-21-1.pdf}
+
+\hypertarget{datasets-accessibility-and-relevance-per-year}{%
+\subsection{8. Datasets accessibility and relevance per
+year}\label{datasets-accessibility-and-relevance-per-year}}
+
+Raw plot relevance per year
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_relevance\_access\_year }\OtherTok{\textless{}{-}} \FunctionTok{plot\_relevance\_year}\NormalTok{(dataset)}
+
+\NormalTok{plot\_relevance\_access\_year}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-22-1.pdf}
+
+Relevance per year (intervals):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_relevance\_year.range }\OtherTok{\textless{}{-}} \FunctionTok{compute\_df\_relevance\_year.range}\NormalTok{(dataset)}
+
+\NormalTok{df\_relevance\_year.range}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    dataset relevance    publication year Publication counts
+## 1                           [0,1.99e+03]                  0
+## 2         No dataset        [0,1.99e+03]                  4
+## 3        cant access        [0,1.99e+03]                  1
+## 4                  X        [0,1.99e+03]                  2
+## 5                  L        [0,1.99e+03]                  4
+## 6                  M        [0,1.99e+03]                  0
+## 7                  H        [0,1.99e+03]                  0
+## 8                       (1.99e+03,2e+03]                  0
+## 9         No dataset    (1.99e+03,2e+03]                  6
+## 10       cant access    (1.99e+03,2e+03]                  2
+## 11                 X    (1.99e+03,2e+03]                  1
+## 12                 L    (1.99e+03,2e+03]                  7
+## 13                 M    (1.99e+03,2e+03]                  2
+## 14                 H    (1.99e+03,2e+03]                  0
+## 15                      (2e+03,2.01e+03]                  0
+## 16        No dataset    (2e+03,2.01e+03]                  8
+## 17       cant access    (2e+03,2.01e+03]                  2
+## 18                 X    (2e+03,2.01e+03]                  0
+## 19                 L    (2e+03,2.01e+03]                  6
+## 20                 M    (2e+03,2.01e+03]                  8
+## 21                 H    (2e+03,2.01e+03]                  1
+## 22                   (2.01e+03,2.02e+03]                  0
+## 23        No dataset (2.01e+03,2.02e+03]                 10
+## 24       cant access (2.01e+03,2.02e+03]                  5
+## 25                 X (2.01e+03,2.02e+03]                  4
+## 26                 L (2.01e+03,2.02e+03]                 10
+## 27                 M (2.01e+03,2.02e+03]                  7
+## 28                 H (2.01e+03,2.02e+03]                  3
+\end{verbatim}
+
+Plot the results:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{plot\_relevance\_year.range }\OtherTok{\textless{}{-}} \FunctionTok{plot\_relevance\_year.range}\NormalTok{(dataset)}
+
+\NormalTok{plot\_relevance\_year.range}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Dataset_retrieval_files/figure-latex/unnamed-chunk-24-1.pdf}
+
+\end{document}

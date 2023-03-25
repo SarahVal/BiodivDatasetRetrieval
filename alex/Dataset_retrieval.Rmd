@@ -1,0 +1,413 @@
+---
+title: "Overview of retrieved datasets"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+**Script description:** This script manipulates the raw data of the retrieved datasets to show summary tables and figures.
+
+**Script structure:**
+
+1.  Number of datasets and relevance categories.2. Queries performance - 3. Temporal duration - 4. Spatial range - 5. Temporal duration, spatial range, and relevance - 6. EBV data types - 7. Data format - 8. Datasets accessibility and relevance per year
+
+(TODO)
+
+9.  Journals
+
+10. Taxonomic coverage
+
+11. Dataset location
+
+12. Temporal and spatial information location
+
+```{r}
+library(dplyr)
+library(reshape)
+library(ggplot2)
+library(hrbrthemes)
+library(ggpubr)
+library(tidyr)
+source("Functions.R")
+```
+
+Some parameters for the plots:
+
+```{r}
+my.theme<-theme(axis.text=element_text(size=15),
+        axis.title = element_text(size = 17),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        panel.background = element_rect(fill = 'white'))
+
+```
+
+#### Read data
+
+Eliminate empty rows and those where dataset_relevance is left in blank (they correspond to referred publications in the retrieved datasets and are not used in these analyses):
+
+```{r}
+
+dataset <- read.csv("091222_Merged_datasets.csv", header = TRUE)
+
+dataset <- dataset[dataset$dataset_relevance != "",]
+
+dataset$id_query
+
+```
+
+## 1. Number of datasets and relevance categories
+
+```{r}
+total_publications <- length(dataset$dataset_relevance)
+
+print(paste("A total of", total_publications, "publications retrieved"))
+  
+```
+
+```{r}
+dataset$dataset_relevance <- as.factor(dataset$dataset_relevance)
+
+df_N_relevance <- count_by_relevance(dataset)
+
+df_N_relevance
+```
+
+## 2. Queries performance
+
+### 2.1. N publications and relevance categories per query
+
+#### Grouped queries
+
+```{r}
+
+dataset$id_query <- as.factor(dataset$id_query)
+
+df_queries_counts <- compute_df_n_relevance_queries(data = dataset)
+
+df_queries_counts
+```
+
+Plot the results:
+
+```{r}
+plot_queries_relevance <- plot_queries_relevance_raw(df_queries_counts)
+
+plot_queries_relevance
+```
+
+-   Query 4 delivers the highest number of relevant datasets (highest number of High, Moderate and Low relevance datasets), but also retrieves by far the higher amount of publication.
+
+-   Some queries do not add any relevant publication (e.g. "0,6,5,7" or "7,2,9").
+
+
+#### Individual queries
+
+
+```{r}
+
+#split rows in function of character comas
+
+dataset_q <- dataset %>%               
+  separate_rows(id_query, sep=",") 
+
+
+dataset_q$id_query  <- as.factor(dataset_q$id_query)
+
+
+df_queries_counts_ind <- compute_df_n_relevance_queries(data = dataset_q)
+
+df_queries_counts_ind
+```
+
+Plot the results
+
+```{r}
+plot_queries_relevance_ind <- plot_queries_relevance_raw(df_queries_counts_ind)
+
+plot_queries_relevance_ind
+```
+
+- query 4 shows the highest number of relevant datasets for high, moderate and low relevance datasets, but retrieves almost double number of articles (~70) compared to the rest of queries.
+
+- queries 5 and 7 are able to retrieve some relevant datasets with ~25 publications retrieved.
+
+
+### 2.2 Classify queries by their relevance (index)
+
+Puctuations for the relevance categories:
+
+-   High = 5
+-   Mod = 2
+-   Low = 0.5
+-   non_relevant = 0
+
+*Index 1*: is the result of summing the puntuations assigned to each relevance category
+
+Index 1 = sum punctuations = (N High \* 5) + (N Mod \* 2) + (N Low \* 0.5)
+
+*Index 2*: is the Index1 but accounting for the total number of publications retrieved by the query.
+
+Index 2 = sum punctuations / n publications retrieved
+
+
+#### Grouped queries
+
+```{r}
+
+df_queries_counts_index <- compute_index12(df_counts = df_queries_counts, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+
+df_queries_counts_index
+
+```
+
+Queries 3, 4, 0, and 6 are the top 4 index1 values. Queries 3 and 4 have far higher index than the rest.
+
+Plot the results:
+
+```{r}
+
+plot_queries_index12 <- plot_queries_index(df = df_queries_counts_index)
+
+plot_queries_index12
+```
+
+-   Index 1 shows that queries "3" and "4" offer the higher perfomance, followed by "6" and "5".
+
+-   Index 2 shows that querie "6,7,5" offer the highest performance, followed by "7,8", "6,7", and "5,6,7,8,9"
+
+
+#### individual queries
+
+```{r}
+df_queries_counts_index_ind <- compute_index12(df_counts = df_queries_counts_ind, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+
+df_queries_counts_index_ind
+```
+
+
+Plot the results
+
+```{r}
+plot_queries_index12_ind <- plot_queries_index(df = df_queries_counts_index_ind)
+
+plot_queries_index12_ind
+```
+
+
+
+## 3. Temporal duration
+
+### 3.1 Temporal duration counts
+
+How many publications without temporal duration data?
+
+```{r}
+nNa <- count_not.reported_temporal.duration(dataset)
+
+print(paste(nNa, "publications without temporal duration data"))
+
+```
+
+Publication counts by temporal duration (years):
+
+```{r}
+  
+df_duration_counts <- count_durations(df = dataset, order_by = "counts")
+
+df_duration_counts
+```
+
+Plot the results:
+
+```{r}
+plot_temp_duration <- plot_duration_counts(df = df_duration_counts, 
+                                           counts_Na = nNa)
+
+plot_temp_duration
+```
+
+Average duration (for those with data):
+
+```{r}
+
+dataset_temp_duration <- subset(dataset, 
+                                  temporal_duration_y > 0 | temporal_duration_y == "no",
+                                  select = c(temporal_duration_y,id_query))
+  
+  dataset_temp_duration$temporal_duration_y <- as.numeric(dataset_temp_duration$temporal_duration_y)
+  
+  
+
+print(paste("mean of",
+            round(mean(na.omit(dataset_temp_duration$temporal_duration_y)),digits = 1),
+            "years"))
+```
+
+### 3.1 Temporal duration counts per relevance category
+
+```{r}
+
+
+plot_duration_relevance.categories <- plot_duration_relevance(df = dataset,
+                                                              counts_Na = nNa)
+
+plot_duration_relevance.categories
+```
+
+## 4. Spatial range
+
+### 4.1 count spatial range publications
+
+WARNING: publications that cant be accessed are not counted
+
+How many publications without spatial range data?
+
+```{r}
+
+n_not_reported <- count_not.reported_spatial_range(dataset)
+
+print(paste(n_not_reported, "publications without spatial range data"))
+
+```
+
+Spatial ranges are divided according to the thresholds established to determine a low, moredate and high spatial range: \<5000, 500-15000, \>15000
+
+```{r}
+
+plot_spatial_range_counts <- plot_spat.range_counts(dataset)
+
+plot_spatial_range_counts
+```
+
+Average spatial range (for those with data):
+
+```{r}
+
+dataset1 <- dataset[dataset$dataset_relevance != "cant access",]
+  
+  dataset1$dataset_relevance <- as.factor(dataset1$dataset_relevance)
+  
+  spatial_range_km2_vec <- dataset1$spatial_range_km2[dataset1$spatial_range_km2 != ""]
+  
+  spatial_range_km2_vec <- spatial_range_km2_vec[!is.na(spatial_range_km2_vec)]
+  
+  spatial_range_km2_vec <- as.numeric(spatial_range_km2_vec) 
+
+
+print(paste("mean of",
+            round(mean(na.omit(spatial_range_km2_vec)), digits = 0),
+            "km2"))
+```
+
+## 5. Temporal duration, spatial range, relevance
+
+```{r}
+
+plot_spatial_temporal_relevance <- plot_spat_temp_relevance(df = dataset)
+
+plot_spatial_temporal_relevance
+```
+
+## 6. EBV data types
+
+```{r}
+
+df_data_type_counts <- compute_df_data.type(df = dataset)
+
+df_data_type_counts
+
+```
+
+Plot the results
+
+```{r}
+
+plot_data_type <- plot_data.type_counts(df_data_type_counts)
+
+plot_data_type
+
+```
+
+## 7. Data format
+
+```{r}
+
+plot_data_format_counts <- plot_data.type_format(dataset)
+
+plot_data_format_counts
+
+```
+
+## 8. Datasets accessibility and relevance per year
+
+Raw plot relevance per year
+
+```{r}
+
+plot_relevance_access_year <- plot_relevance_year(dataset)
+
+plot_relevance_access_year
+
+```
+
+Relevance per year (intervals):
+
+```{r}
+
+df_relevance_year.range <- compute_df_relevance_year.range(dataset)
+
+df_relevance_year.range
+
+```
+
+Plot the results:
+
+```{r}
+
+plot_relevance_year.range <- plot_relevance_year.range(dataset)
+
+plot_relevance_year.range
+
+```
+
+
+
+
+## 9. Journals
+
+
+Count publications per journal
+
+```{r}
+
+dataset.j <- dataset[dataset$Journal != "" & dataset$Journal != "no",]
+
+df_journals_counts <- as.data.frame(table(dataset.j$Journal))
+
+colnames(df_journals_counts) = c("Journal", "Publication_counts")
+
+df_journals_counts <- df_journals_counts[order(-df_journals_counts$Publication_counts),]
+
+
+df_journals_counts
+
+```
+
+```{r}
+
+print(paste("A total of", length(df_journals_counts$Journal), "journals" ))
+
+```
+
+```{r}
+
+```
+
+
+## 10. Location of information
+
+
