@@ -55,8 +55,6 @@ dataset <- read.csv("091222_Merged_datasets.csv", header = TRUE)
 
 dataset <- dataset[dataset$dataset_relevance != "",]
 
-dataset$id_query
-
 ```
 
 ## 1. Number of datasets and relevance categories
@@ -334,6 +332,9 @@ plot_data_type
 
 ## 7. Data format
 
+
+Those datasets in the repository that are relevance category X don't have format information.
+
 ```{r}
 
 plot_data_format_counts <- plot_data.type_format(dataset)
@@ -408,6 +409,166 @@ print(paste("A total of", length(df_journals_counts$Journal), "journals" ))
 ```
 
 
+## 10. Source of information across time
+
+
+```{r}
+dataset_l <- dataset[,c("publication_date", "source")]
+
+dataset_l <- dataset_l[-is.na(dataset_l),]
+
+dataset_l <- dataset_l[-which(is.na(dataset_l$publication_date)),]
+
+dataset_l <- dataset_l[-which((dataset_l$publication_date) == ""),]
+
+# Transforming date formats to years. Many entries are only years -> keep those to add them later.
+# Those with length 1 will only contain the year:
+
+
+dataset_l$publication_date <- gsub("-", "/", dataset_l$publication_date)
+
+
+year <- numeric(length(dataset_l$publication_date))
+
+for (i in 1:length(dataset_l$publication_date)) {
+  
+  if(dataset_l$source[i] == "dryad" & nchar(dataset_l$publication_date[i]) >= 5){
+    
+    year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%d/%m/%Y"), format ="%Y")
+    
+    
+  }else if(nchar(dataset_l$publication_date[i]) == 4){
+    
+    year[i] <- dataset_l$publication_date[i]
+    
+  }else if(dataset_l$source[i] == "semantic_scholar" & nchar(dataset_l$publication_date[i]) >= 5){
+    
+     year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%d/%m/%Y"), format ="%Y")
+    
+    
+  }else  if(dataset_l$source[i] == "zenodo" & nchar(dataset_l$publication_date[i]) >= 5){
+    
+    year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%Y/%m/%d"), format ="%Y")
+  }
+  
+  
+}
+
+
+
+
+# semantic_scholar changes the format of the date, so now I am changing only those that give NA because the order d/m/Y was different
+
+year[which(is.na(year))] <- format(as.POSIXct(dataset_l$publication_date[which(is.na(year))], format = "%Y/%m/%d"), format ="%Y")
+
+dataset_l$year <-  year
+
+```
+
+```{r}
+df_plot_source_time <- as.data.frame(table(dataset_l$year,dataset_l$source ))
+
+colnames(df_plot_source_time) <- c("year", "source", "N")
+
+df_plot_source_time$N <- as.numeric(df_plot_source_time$N)
+
+str(df_plot_source_time)
+
+ggplot(df_plot_source_time, aes(x = year, y = N, group = source, color = source)) +
+  geom_line(size = 1)+
+    theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+```
+
+
+
 ## 10. Location of information
+
+```{r}
+
+df_location_info <- compute_df_location_info(df = dataset)
+
+
+```
+
+```{r}
+df_plot_loc_spatial.range <- df_location_info[df_location_info$spatial_range_position != "",]
+
+df_plot_loc_temporal.range <- df_location_info[df_location_info$temporal_range_position != "",]
+
+df_plot_loc_temporal.duration <- df_location_info[df_location_info$temporal_duration_position != "",]
+
+
+
+plot_spat_range_position <- ggplot(na.omit(df_plot_loc_spatial.range), aes(x=spatial_range_position, fill = dataset_location)) + 
+  geom_bar(aes(y = (..count..))) +
+  geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+  ggtitle("Spatial range information")+
+  theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+plot_temp_range_position <- ggplot(na.omit(df_plot_loc_temporal.range), aes(x=temporal_range_position, fill = dataset_location)) + 
+  geom_bar(aes(y = (..count..))) +
+  geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+    ggtitle("Temporal range information")+
+  theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+df_plot_loc_temporal.duration <- ggplot(na.omit(df_plot_loc_temporal.duration), aes(x=temporal_duration_position, fill = dataset_location)) + 
+  geom_bar(aes(y = (..count..))) +
+  geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+  ggtitle("Temporal duration information")+
+  theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+plot_location_spatiotemporal_information <- ggarrange(plot_spat_range_position,
+          plot_temp_range_position,
+          df_plot_loc_temporal.duration,
+          ncol = 1,
+          nrow = 3, 
+          common.legend = TRUE,
+          legend = "top")
+
+
+plot_location_spatiotemporal_information
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

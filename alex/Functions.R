@@ -644,6 +644,8 @@ plot_data.type_counts <- function(df) {
 
 plot_data.type_format <- function(df) {
   
+  
+  
   dataset_fil_format <- df[df$dataset_location != "",]
   
   location <- dataset_fil_format$dataset_location
@@ -651,17 +653,25 @@ plot_data.type_format <- function(df) {
   
   df <- data.frame(location, format)
   
-  df$location <- as.factor(df$location)
+  df1 <- df %>%               
+    separate_rows(format, sep=",") 
   
-  df$format <- as.factor(df$format)
+  df2 <- df1 %>%               
+    separate_rows(location, sep=",") 
   
-  df1 <- as.data.frame(table(df$format, df$location))
+  df2$location <- trimws(df2$location)
   
-  colnames(df1) = c("format", "location", "counts")
+  df2$location <- as.factor(df2$location)
   
-
+  df2$format <- as.factor(df2$format)
   
-  plot <- ggplot(df1, aes(x=location, y=counts, group = format, color = format) ) +
+  df3 <- as.data.frame(table(df2$format, df2$location))
+  
+  colnames(df3) = c("format", "location", "counts")
+  
+  
+  
+  plot <- ggplot(df3, aes(x=location, y=counts, group = format, color = format) ) +
     geom_segment( aes(x=location ,xend=location, y=0, yend=max(counts)), color="grey") +
     geom_point(size=4, alpha = 0.8) +
     coord_flip() +
@@ -673,8 +683,6 @@ plot_data.type_format <- function(df) {
     ) +
     xlab("Dataset location")+
     ylab("N publications") +
-    #scale_color_manual(values = c("gray60", "red","purple2", "dodgerblue", "black", "black"))+
-    #scale_shape_manual(values = c(15, 19, 19, 19, 1,13))+
     my.theme
   
   
@@ -793,11 +801,64 @@ plot_relevance_year.range <- function(df) {
 
 
 
+# Plot location geospatial-temporal information
+
+compute_df_location_info <- function(df) {
+  
+  df_loc_info <- df[,c("dataset_location", "spatial_range_position","temporal_range_position", "temporal_duration_position")]
+  
+  df_loc_info <- df_loc_info[df_loc_info$dataset_location != "",]
+  df_loc_info <- df_loc_info[df_loc_info$dataset_location != "no",]
+  
+  df_loc_info1 <- df_loc_info %>%               
+    separate_rows(dataset_location, sep=",") 
+  
+  df_loc_info1 <- df_loc_info1[-is.na(df_loc_info1$dataset_location),]
+  
+  df_loc_info2 <- df_loc_info1 %>%               
+    separate_rows(spatial_range_position, sep=",") 
+  
+  df_loc_info3 <- df_loc_info2 %>%               
+    separate_rows(temporal_range_position, sep=",") 
+  
+  df_loc_info4 <- df_loc_info3 %>%               
+    separate_rows(temporal_duration_position, sep=",") 
+  
+  df_loc_info4$dataset_location<- trimws(df_loc_info4$dataset_location)
+  
+  df_loc_info4$dataset_location <- as.factor(df_loc_info4$dataset_location)
+  
+  df_loc_info4$spatial_range_position <- trimws(df_loc_info4$spatial_range_position)
+  df_loc_info4$temporal_range_position <- trimws(df_loc_info4$temporal_range_position)
+  df_loc_info4$temporal_duration_position <- trimws(df_loc_info4$temporal_duration_position)
+  
+  return(df_loc_info4)
+  
+
+  
+}
 
 
+plot_location_info <- function(df, variable, colname) {
+  
+  
+  df1 <- df[variable != "",]
 
-
-
+  df2 <- df1[, c("dataset_location", colname)]
+  
+  plot <- ggplot(na.omit(df2), aes(x= df2[,2], fill = dataset_location)) + 
+    geom_bar(aes(y = (..count..))) +
+    geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+    theme_bw()+
+    my.theme+
+    theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+    ylab("N retrieved articles") +
+    scale_x_discrete(guide = guide_axis(n.dodge=2))
+  
+  return(plot)
+  
+  
+}
 
 
 
