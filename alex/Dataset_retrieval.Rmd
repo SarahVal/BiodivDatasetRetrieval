@@ -92,9 +92,11 @@ df_queries_counts
 Plot the results:
 
 ```{r}
-plot_queries_relevance <- plot_queries_relevance_raw(df_queries_counts)
+plot_group.queries_relevance <- plot_queries_relevance_raw(df_queries_counts)
 
-plot_queries_relevance
+plot_group.queries_relevance
+
+#ggsave("plot_group.queries_relevance_all.png", height = 7, width = 12)
 ```
 
 -   Query 4 delivers the highest number of relevant datasets (highest number of High, Moderate and Low relevance datasets), but also retrieves by far the higher amount of publication.
@@ -124,9 +126,11 @@ df_queries_counts_ind
 Plot the results
 
 ```{r}
-plot_queries_relevance_ind <- plot_queries_relevance_raw(df_queries_counts_ind)
+plot_ind.queries_relevance_ind <- plot_queries_relevance_raw(df_queries_counts_ind)
 
-plot_queries_relevance_ind
+plot_ind.queries_relevance_ind
+
+#ggsave("plot_ind.queries_relevance_all.png", height = 7, width = 12)
 ```
 
 - query 4 shows the highest number of relevant datasets for high, moderate and low relevance datasets, but retrieves almost double number of articles (~70) compared to the rest of queries.
@@ -168,9 +172,11 @@ Plot the results:
 
 ```{r}
 
-plot_queries_index12 <- plot_queries_index(df = df_queries_counts_index)
+plot_group.queries_index12 <- plot_queries_index(df = df_queries_counts_index)
 
-plot_queries_index12
+plot_group.queries_index12
+
+#ggsave("plot_group.queries_index12.png", height = 5, width = 11)
 ```
 
 -   Index 1 shows that queries "3" and "4" offer the higher perfomance, followed by "6" and "5".
@@ -193,7 +199,118 @@ Plot the results
 plot_queries_index12_ind <- plot_queries_index(df = df_queries_counts_index_ind)
 
 plot_queries_index12_ind
+
+#ggsave("plot_ind.queries_index12.png", height = 5, width = 11)
 ```
+
+
+
+### 2.3. F SCORE
+
+Precision
+Recall
+
+Binary view: M,H relevant | L,X unrevelant
+
+
+N relevant datasets -> True Positives (TP)
+
+N unrelevant datasets -> False Positives (FP)
+
+Sum of all relevant publications of the dataset that are not detected = FN
+
+PRECISION = TP / TP + FP
+
+RECALL = TP / TP + FN
+
+
+F SCORE = 2* precision * recall / precision + recall
+
+
+
+Split grouped queries into individual ones
+
+```{r}
+#split rows in function of character comas
+
+dataset_q <- dataset %>%               
+  separate_rows(id_query, sep=",") 
+
+
+dataset_q$id_query  <- as.factor(dataset_q$id_query)
+
+
+## Eliminate  "No dataset", "cant access", and "NA"
+
+dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "No dataset"),]
+dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "cant access"),]
+
+dataset_q$relevance_binary <- dataset_q$dataset_relevance
+
+
+## Convert relevance into binary classification (Relevant/Unrelevant)
+
+
+dataset_q$relevance_binary  <- gsub('H', 'R',
+           gsub('M', 'R',
+           gsub('L', 'U',
+                gsub("X", "U", dataset_q$relevance_binary))))
+
+
+## Calculate precision for each query
+
+queries <- levels(dataset_q$id_query)
+
+
+
+TP <- numeric(length(queries))
+FP <- numeric(length(queries))
+FN <- numeric(length(queries))
+
+queries <- as.numeric(queries)
+
+for (i in 1:length(queries)) {
+  
+  TP[i] <- length(which(dataset_q$id_query == queries[i] & 
+                          dataset_q$relevance_binary == "R"))
+  
+  FP[i] <- length(which(dataset_q$id_query == queries[i]))
+  
+  FN[i] <- length(which(dataset_q$relevance_binary == "R" &
+                          dataset_q$id_query != queries[i]))
+  
+}
+
+
+Precision = TP / (TP + FP)
+
+Recall = TP / (TP + FN)
+
+Fscore = 2 * (Precision * Recall) / (Precision + Recall)
+
+df_scores <- data.frame(queries, Fscore,Precision, Recall)
+
+df_scores <- df_scores[order(-Fscore),]
+
+df_scores
+
+
+```
+
+Plot results
+
+```{r}
+plot_queries_scores <- ggplot(df_scores, aes(x = Precision, y = Recall, colour = Fscore)) +
+  geom_point(size = 10)+
+  geom_label_repel(aes(label = queries))+
+  theme_bw()+
+  my.theme
+
+plot_queries_scores
+
+#ggsave("plot_queries_scores.png", height = 7, width = 7)
+```
+
 
 
 
@@ -226,6 +343,8 @@ plot_temp_duration <- plot_duration_counts(df = df_duration_counts,
                                            counts_Na = nNa)
 
 plot_temp_duration
+
+#ggsave("plot_temp_duration.png", height = 7, width = 12)
 ```
 
 Average duration (for those with data):
@@ -254,6 +373,9 @@ plot_duration_relevance.categories <- plot_duration_relevance(df = dataset,
                                                               counts_Na = nNa)
 
 plot_duration_relevance.categories
+
+#ggsave("plot_duration_relevance.categories.png", height = 7, width = 9)
+
 ```
 
 ## 4. Spatial range
@@ -279,6 +401,9 @@ Spatial ranges are divided according to the thresholds established to determine 
 plot_spatial_range_counts <- plot_spat.range_counts(dataset)
 
 plot_spatial_range_counts
+
+#ggsave("plot_spatial_range_counts.png", height = 7, width = 7)
+
 ```
 
 Average spatial range (for those with data):
@@ -308,6 +433,9 @@ print(paste("mean of",
 plot_spatial_temporal_relevance <- plot_spat_temp_relevance(df = dataset)
 
 plot_spatial_temporal_relevance
+
+#ggsave("plot_spatial_temporal_relevance.png", height = 7, width = 9)
+
 ```
 
 ## 6. EBV data types
@@ -328,6 +456,8 @@ plot_data_type <- plot_data.type_counts(df_data_type_counts)
 
 plot_data_type
 
+#ggsave("plot_data_type.png", height = 7, width = 9)
+
 ```
 
 ## 7. Data format
@@ -341,6 +471,8 @@ plot_data_format_counts <- plot_data.type_format(dataset)
 
 plot_data_format_counts
 
+#ggsave("plot_data_format_counts.png", height = 7, width = 9)
+
 ```
 
 ## 8. Datasets accessibility and relevance per year
@@ -352,6 +484,8 @@ Raw plot relevance per year
 plot_relevance_access_year <- plot_relevance_year(dataset)
 
 plot_relevance_access_year
+
+#ggsave("plot_relevance_access_year.png", height = 7, width = 14)
 
 ```
 
@@ -372,6 +506,8 @@ Plot the results:
 plot_relevance_year.range <- plot_relevance_year.range(dataset)
 
 plot_relevance_year.range
+
+#ggsave("plot_relevance_year.range.png", height = 7, width = 9)
 
 ```
 
@@ -397,6 +533,12 @@ df_journals_counts <- df_journals_counts[order(-df_journals_counts$Publication_c
 df_journals_counts
 
 ```
+
+
+
+
+
+
 
 ```{r}
 
@@ -454,14 +596,14 @@ for (i in 1:length(dataset_l$publication_date)) {
   
 }
 
+dataset_l[50,]
 
+year
 
 
 # semantic_scholar changes the format of the date, so now I am changing only those that give NA because the order d/m/Y was different
 
 year[which(is.na(year))] <- format(as.POSIXct(dataset_l$publication_date[which(is.na(year))], format = "%Y/%m/%d"), format ="%Y")
-
-dataset_l$year <-  year
 
 ```
 
@@ -474,13 +616,16 @@ df_plot_source_time$N <- as.numeric(df_plot_source_time$N)
 
 str(df_plot_source_time)
 
-ggplot(df_plot_source_time, aes(x = year, y = N, group = source, color = source)) +
+plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = source, color = source)) +
   geom_line(size = 1)+
     theme_bw()+
   my.theme+
   theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
   ylab("N retrieved articles") +
   scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+#ggsave("plot_source_time.png", height = 7, width = 13)
 
 ```
 
@@ -547,6 +692,9 @@ plot_location_spatiotemporal_information <- ggarrange(plot_spat_range_position,
 
 
 plot_location_spatiotemporal_information
+
+
+#ggsave("plot_location_spatiotemporal_information.png", height = 16, width = 7)
 
 ```
 
