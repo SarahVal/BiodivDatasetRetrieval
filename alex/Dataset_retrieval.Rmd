@@ -532,6 +532,7 @@ df_journals_counts <- df_journals_counts[order(-df_journals_counts$Publication_c
 
 df_journals_counts
 
+
 ```
 
 
