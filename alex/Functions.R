@@ -299,7 +299,7 @@ calculate_z.score_queries <- function(df) {
   
   #split rows in function of character comas
   
-  dataset_q <- dataset %>%               
+  dataset_q <- df %>%               
     separate_rows(id_query, sep=",") 
   
   
@@ -308,8 +308,19 @@ calculate_z.score_queries <- function(df) {
   
   ## Eliminate  "No dataset", "cant access", and "NA"
   
-  dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "No dataset"),]
-  dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "cant access"),]
+  if("No dataset" %in% dataset_q$dataset_relevance){
+    
+    dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "No dataset"),]
+    
+  }
+  
+  if("cant access" %in% dataset_q$dataset_relevance){
+    
+    dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "cant access"),]
+    
+  }
+  
+
   
   dataset_q$relevance_binary <- dataset_q$dataset_relevance
   
@@ -893,6 +904,44 @@ plot_relevance_year.range <- function(df) {
     ggtitle("dataset accessibility, relevance, and publication year")+
     scale_fill_manual(values = c("red","dodgerblue","purple2","darkgrey","yellow","floralwhite"))+
     scale_x_discrete(labels = c("<= 1990", "(1990-2000]", "(2000-2010]", "> 2010"))+
+    theme_bw()+
+    my.theme
+  
+  return(plot)
+  
+  
+}
+
+
+
+
+plot_relevance_year.range_repo <- function(df) {
+  
+  df$year1 <- format(as.POSIXct(df$publication_date, format = "%m/%d/%Y"), format ="%Y")
+  
+  dataset_valid <- df[df$valid_yn == "yes",]
+  
+  dataset_valid1 <- dataset_valid[is.na(dataset_valid$year) == FALSE, ]
+  
+  dataset_valid1$dataset_relevance <- ordered(dataset_valid1$dataset_relevance,levels = c("", "No dataset", "cant access", " X", "L", "M", "H"))
+  
+  
+  
+  dataset_valid1$year1.cut <- cut(as.numeric(dataset_valid1$year1), 
+                                  breaks = c(0, 2015, 
+                                             max(dataset_valid1$year1, na.rm = TRUE)), 
+                                  include.lowest = TRUE)
+  
+  dataset_valid1[dataset_valid1$dataset_relevance]
+  
+  
+  plot <- ggplot(dataset_valid1, aes(x = year1.cut, fill = forcats::fct_rev(dataset_relevance))) +
+    geom_bar()+
+    xlab("year") +
+    ylab("dataset accessibility and relevance") +
+    ggtitle("dataset accessibility, relevance, and publication year")+
+    scale_fill_manual(values = c("red","dodgerblue","purple2","darkgrey","yellow","floralwhite"))+
+    scale_x_discrete(labels = c("<= 2015",  "> 2015"))+
     theme_bw()+
     my.theme
   

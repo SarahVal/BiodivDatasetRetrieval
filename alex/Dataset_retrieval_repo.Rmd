@@ -1,0 +1,831 @@
+---
+title: "Overview of retrieved datasets"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+**Script description:** This script manipulates the raw data of the retrieved datasets to show summary tables and figures.
+
+**Script structure:**
+
+1.  Number of datasets and relevance categories.2. Queries performance - 3. Temporal duration - 4. Spatial range - 5. Temporal duration, spatial range, and relevance - 6. EBV data types - 7. Data format - 8. Datasets accessibility and relevance per year
+
+(TODO)
+
+9.  Journals
+
+10. Taxonomic coverage
+
+11. Dataset location
+
+12. Temporal and spatial information location
+
+```{r}
+library(dplyr)
+library(reshape)
+library(ggplot2)
+library(hrbrthemes)
+library(ggpubr)
+library(tidyr)
+library(stringr)
+library(ggrepel)
+source("Functions.R")
+```
+
+Some parameters for the plots:
+
+```{r}
+my.theme<-theme(axis.text=element_text(size=15),
+        axis.title = element_text(size = 17),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        panel.background = element_rect(fill = 'white'))
+
+```
+
+
+
+
+
+#### Read data
+
+Eliminate empty rows and those where dataset_relevance is left in blank (they correspond to referred publications in the retrieved datasets and are not used in these analyses):
+
+```{r}
+
+dataset <- read.csv("091222_Merged_datasets.csv", header = TRUE)
+
+dataset <- dataset[dataset$dataset_relevance != "",]
+
+dataset$dataset_relevance <- recode_factor(dataset$dataset_relevance, X = " X") #correct factor name (x with/without space)
+
+dataset <- dataset[dataset$source != "semantic_scholar",]
+
+head(dataset)
+
+```
+
+
+
+## 1. Number of datasets and relevance categories
+
+```{r}
+total_publications <- length(dataset$dataset_relevance)
+
+print(paste("A total of", total_publications, "publications retrieved"))
+  
+```
+
+```{r}
+dataset$dataset_relevance <- as.factor(dataset$dataset_relevance)
+
+df_N_relevance <- count_by_relevance(dataset)
+
+df_N_relevance
+```
+
+
+
+### 1.1 Relevance counts by source
+
+```{r}
+
+df_rel_source <- count_relevance_by_source(df = dataset)
+
+df_rel_source
+
+
+```
+
+Plot the results:
+
+```{r}
+
+df_rel_source_melt <- melt(df_rel_source, id ="relevance")
+
+plot_relevance_source <- ggplot(df_rel_source_melt, 
+                                          aes(x=relevance, y=value, group = variable, 
+                                              color = variable,shape=variable )) +
+  scale_x_discrete(limits = rev(levels(df_rel_source_melt$relevance)))+
+    geom_segment( aes(x=relevance ,xend=relevance, y=0, yend=max(value)), color="grey") +
+    geom_point(size=7, alpha = 0.8) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Query ID")+
+    ylab("publications counts") +
+    #scale_color_manual(values = c("gray60", "red","purple2", "dodgerblue", "black", "black"))+
+   # scale_shape_manual(values = c(15, 19, 19, 19, 1,13))+
+    my.theme
+
+
+plot_relevance_source
+
+#ggsave("plots_repo/plot_relevance_source.png", height = 7, width = 12)
+
+```
+
+
+
+## 2. Queries performance
+
+### 2.1. N publications and relevance categories per query
+
+#### Grouped queries
+
+```{r}
+
+dataset$id_query <- as.factor(dataset$id_query)
+
+df_queries_counts <- compute_df_n_relevance_queries(data = dataset)
+
+df_queries_counts
+```
+
+Plot the results:
+
+```{r}
+plot_group.queries_relevance <- plot_queries_relevance_raw(df_queries_counts)
+
+plot_group.queries_relevance
+
+#ggsave("plots_repo/plot_group.queries_relevance_all.png", height = 7, width = 12)
+```
+
+-   Query 4 delivers the highest number of relevant datasets (highest number of High, Moderate and Low relevance datasets), but also retrieves by far the higher amount of publication.
+
+-   Some queries do not add any relevant publication (e.g. "0,6,5,7" or "7,2,9").
+
+
+#### Individual queries
+
+
+```{r}
+
+#split rows in function of character comas
+
+dataset_q <- dataset %>%               
+  separate_rows(id_query, sep=",") 
+
+
+dataset_q$id_query  <- as.factor(dataset_q$id_query)
+
+
+df_queries_counts_ind <- compute_df_n_relevance_queries(data = dataset_q)
+
+df_queries_counts_ind
+```
+
+Plot the results
+
+```{r}
+plot_ind.queries_relevance_ind <- plot_queries_relevance_raw(df_queries_counts_ind)
+
+plot_ind.queries_relevance_ind
+
+#ggsave("plots_repo/plot_ind.queries_relevance_all.png", height = 7, width = 12)
+```
+
+- query 4 shows the highest number of relevant datasets for high, moderate and low relevance datasets, but retrieves almost double number of articles (~70) compared to the rest of queries.
+
+- queries 5 and 7 are able to retrieve some relevant datasets with ~25 publications retrieved.
+
+
+### 2.2 Classify queries by their relevance (index)
+
+Puctuations for the relevance categories:
+
+-   High = 5
+-   Mod = 2
+-   Low = 0.5
+-   non_relevant = 0
+
+*Index 1*: is the result of summing the puntuations assigned to each relevance category
+
+Index 1 = sum punctuations = (N High \* 5) + (N Mod \* 2) + (N Low \* 0.5)
+
+*Index 2*: is the Index1 but accounting for the total number of publications retrieved by the query.
+
+Index 2 = sum punctuations / n publications retrieved
+
+
+#### Grouped queries
+
+```{r}
+
+df_queries_counts_index <- compute_index12(df_counts = df_queries_counts, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+
+df_queries_counts_index
+
+```
+
+Queries 3, 4, 0, and 6 are the top 4 index1 values. Queries 3 and 4 have far higher index than the rest.
+
+Plot the results:
+
+```{r}
+
+plot_group.queries_index12 <- plot_queries_index(df = df_queries_counts_index)
+
+plot_group.queries_index12
+
+#ggsave("plots_repo/plot_group.queries_index12.png", height = 5, width = 11)
+```
+
+-   Index 1 shows that queries "3" and "4" offer the higher perfomance, followed by "6" and "5".
+
+-   Index 2 shows that querie "6,7,5" offer the highest performance, followed by "7,8", "6,7", and "5,6,7,8,9"
+
+
+#### individual queries
+
+```{r}
+df_queries_counts_index_ind <- compute_index12(df_counts = df_queries_counts_ind, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+
+df_queries_counts_index_ind
+```
+
+
+Plot the results
+
+```{r}
+plot_queries_index12_ind <- plot_queries_index(df = df_queries_counts_index_ind)
+
+plot_queries_index12_ind
+
+#ggsave("plots_repo/plot_ind.queries_index12.png", height = 5, width = 11)
+```
+
+
+
+### 2.3. F SCORE
+
+Precision
+Recall
+
+Binary view: M,H relevant | L,X unrevelant
+
+
+N relevant datasets -> True Positives (TP)
+
+N unrelevant datasets -> False Positives (FP)
+
+Sum of all relevant publications of the dataset that are not detected = FN
+
+PRECISION = TP / TP + FP
+
+RECALL = TP / TP + FN
+
+
+F SCORE = 2* precision * recall / precision + recall
+
+
+
+Split grouped queries into individual ones
+
+```{r}
+
+df_zscores_queries <- calculate_z.score_queries(df = dataset)
+
+df_zscores_queries
+
+```
+
+Plot results
+
+```{r}
+plot_queries_scores <- ggplot(df_zscores_queries, aes(x = Precision, y = Recall, colour = Fscore)) +
+  geom_point(size = 10)+
+  geom_label_repel(aes(label = queries))+
+  theme_bw()+
+  my.theme
+
+plot_queries_scores
+
+#ggsave("plots_repo/plot_queries_scores.png", height = 7, width = 7)
+```
+
+
+
+
+## 3. Temporal duration
+
+### 3.1 Temporal duration counts
+
+How many publications without temporal duration data?
+
+```{r}
+nNa <- count_not.reported_temporal.duration(dataset)
+
+print(paste(nNa, "publications without temporal duration data"))
+
+```
+
+Publication counts by temporal duration (years):
+
+```{r}
+  
+df_duration_counts <- count_durations(df = dataset, order_by = "counts")
+
+df_duration_counts
+```
+
+Plot the results:
+
+```{r}
+plot_temp_duration <- plot_duration_counts(df = df_duration_counts, 
+                                           counts_Na = nNa)
+
+plot_temp_duration
+
+#ggsave("plots_repo/plot_temp_duration.png", height = 7, width = 12)
+
+```
+
+Average duration (for those with data):
+
+```{r}
+
+dataset_temp_duration <- subset(dataset, 
+                                  temporal_duration_y > 0 | temporal_duration_y == "no",
+                                  select = c(temporal_duration_y,id_query))
+  
+  dataset_temp_duration$temporal_duration_y <- as.numeric(dataset_temp_duration$temporal_duration_y)
+  
+  
+
+print(paste("mean of",
+            round(mean(na.omit(dataset_temp_duration$temporal_duration_y)),digits = 1),
+            "years"))
+```
+
+### 3.1 Temporal duration counts per relevance category
+
+```{r}
+
+
+plot_duration_relevance.categories <- plot_duration_relevance(df = dataset,
+                                                              counts_Na = nNa)
+
+plot_duration_relevance.categories
+
+ggsave("plots_repo/plot_duration_relevance.categories.png", height = 7, width = 9)
+
+```
+
+## 4. Spatial range
+
+### 4.1 count spatial range publications
+
+WARNING: publications that cant be accessed are not counted
+
+How many publications without spatial range data?
+
+```{r}
+
+n_not_reported <- count_not.reported_spatial_range(dataset)
+
+print(paste(n_not_reported, "publications without spatial range data"))
+
+```
+
+Spatial ranges are divided according to the thresholds established to determine a low, moredate and high spatial range: \<5000, 500-15000, \>15000
+
+```{r}
+
+plot_spatial_range_counts <- plot_spat.range_counts(dataset)
+
+plot_spatial_range_counts
+
+#ggsave("plots_repo/plot_spatial_range_counts.png", height = 7, width = 7)
+
+```
+
+Average spatial range (for those with data):
+
+```{r}
+
+dataset1 <- dataset[dataset$dataset_relevance != "cant access",]
+  
+  dataset1$dataset_relevance <- as.factor(dataset1$dataset_relevance)
+  
+  spatial_range_km2_vec <- dataset1$spatial_range_km2[dataset1$spatial_range_km2 != ""]
+  
+  spatial_range_km2_vec <- spatial_range_km2_vec[!is.na(spatial_range_km2_vec)]
+  
+  spatial_range_km2_vec <- as.numeric(spatial_range_km2_vec) 
+
+
+print(paste("mean of",
+            round(mean(na.omit(spatial_range_km2_vec)), digits = 0),
+            "km2"))
+```
+
+## 5. Temporal duration, spatial range, relevance
+
+```{r}
+
+plot_spatial_temporal_relevance <- plot_spat_temp_relevance(df = dataset)
+
+plot_spatial_temporal_relevance
+
+#ggsave("plots_repo/plot_spatial_temporal_relevance.png", height = 7, width = 9)
+
+```
+
+## 6. EBV data types
+
+```{r}
+
+df_data_type_counts <- compute_df_data.type(df = dataset)
+
+df_data_type_counts
+
+```
+
+Plot the results
+
+```{r}
+
+plot_data_type <- plot_data.type_counts(df_data_type_counts)
+
+plot_data_type
+
+#ggsave("plots_repo/plot_data_type.png", height = 7, width = 9)
+
+```
+
+## 7. Data format
+
+
+Those datasets in the repository that are relevance category X don't have format information.
+
+```{r}
+
+plot_data_format_counts <- plot_data.type_format(dataset)
+
+plot_data_format_counts
+
+#ggsave("plots_repo/plot_data_format_counts.png", height = 7, width = 9)
+
+```
+
+## 8. Datasets accessibility and relevance per year
+
+Raw plot relevance per year
+
+```{r}
+
+plot_relevance_access_year <- plot_relevance_year(dataset)
+
+plot_relevance_access_year
+
+#ggsave("plots_repo/plot_relevance_access_year.png", height = 7, width = 14)
+
+```
+
+Relevance per year (intervals):
+
+```{r}
+
+df_relevance_year.range <- compute_df_relevance_year.range(dataset)
+
+df_relevance_year.range
+
+```
+
+Plot the results:
+
+```{r}
+
+plot_relevance_year.range <- plot_relevance_year.range_repo(dataset)
+
+plot_relevance_year.range
+
+#ggsave("plots_repo/plot_relevance_year.range.png", height = 7, width = 9)
+
+```
+
+
+
+
+## 9. Journals
+
+
+Count publications per journal
+
+```{r}
+
+dataset.j <- dataset[dataset$Journal != "" & dataset$Journal != "no",]
+
+df_journals_counts <- as.data.frame(table(dataset.j$Journal))
+
+colnames(df_journals_counts) = c("Journal", "Publication_counts")
+
+df_journals_counts <- df_journals_counts[order(-df_journals_counts$Publication_counts),]
+
+
+df_journals_counts
+
+
+```
+
+
+
+
+
+
+
+```{r}
+
+print(paste("A total of", length(df_journals_counts$Journal), "journals" ))
+
+```
+
+```{r}
+
+```
+
+
+## 10. Source of information across time
+
+
+```{r}
+
+df.source_time <- df_source_time(df = dataset)
+
+df.source_time
+
+```
+
+
+
+
+
+```{r}
+df_plot_source_time <- as.data.frame(table(df.source_time$year,df.source_time$source ))
+
+colnames(df_plot_source_time) <- c("year", "source", "N")
+
+df_plot_source_time$N <- as.numeric(df_plot_source_time$N)
+
+
+plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = source, color = source)) +
+  geom_line(size = 1)+
+    theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+plot_source_time
+
+
+#ggsave("plots_repo/plot_source_time.png", height = 7, width = 13)
+
+```
+
+
+
+## 10. Location of information
+
+```{r}
+
+df_location_info <- compute_df_location_info(df = dataset)
+
+```
+
+
+```{r}
+df_plot_loc_spatial.range <- df_location_info[df_location_info$spatial_range_position != "",]
+
+df_plot_loc_temporal.range <- df_location_info[df_location_info$temporal_range_position != "",]
+
+df_plot_loc_temporal.duration <- df_location_info[df_location_info$temporal_duration_position != "",]
+
+
+
+plot_spat_range_position <- ggplot(na.omit(df_plot_loc_spatial.range), aes(x=spatial_range_position, fill = dataset_location)) + 
+  geom_bar(aes(y = (..count..))) +
+  geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+  ggtitle("Spatial range information")+
+  theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+plot_temp_range_position <- ggplot(na.omit(df_plot_loc_temporal.range), aes(x=temporal_range_position, fill = dataset_location)) + 
+  geom_bar(aes(y = (..count..))) +
+  geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+    ggtitle("Temporal range information")+
+  theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+df_plot_loc_temporal.duration <- ggplot(na.omit(df_plot_loc_temporal.duration), aes(x=temporal_duration_position, fill = dataset_location)) + 
+  geom_bar(aes(y = (..count..))) +
+  geom_text(stat='count', aes(label=..count..),position = position_stack(vjust = 0.5))+
+  ggtitle("Temporal duration information")+
+  theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved articles") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+
+plot_location_spatiotemporal_information <- ggarrange(plot_spat_range_position,
+          plot_temp_range_position,
+          df_plot_loc_temporal.duration,
+          ncol = 1,
+          nrow = 3, 
+          common.legend = TRUE,
+          legend = "top")
+
+
+plot_location_spatiotemporal_information
+
+
+#ggsave("plots_repo/plot_location_spatiotemporal_information.png", height = 16, width = 7)
+
+```
+
+
+
+
+# location - dataset type
+
+
+We evaluate the feasibility to automatically retrieve the information on the dataset type by looking at whether authors make explicit the type of dataset in either the title or abstract.
+
+Type of dataset should fall in one of the following categories or synonyms:
+
+```{r}
+df_dataset_types <- read.csv("../data/dataset_types.csv", sep = ";")
+df_dataset_types
+```
+
+I will add the following synonyms:
+
+presence-absence: detection, capture
+
+EBV genetic analyses: 16S, 18S, genetic data, microsatelites, barcodes(?), haplotypes, eDNA, SNPs
+
+
+```{r}
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("presence-absence", "detection", "synonym")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("presence-absence", "capture", "synonym")
+
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "16S", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "18S", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "barcodes", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "haplotypes", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "eDNA", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "SNPs", "methods")
+
+df_dataset_types
+```
+
+
+
+Detecting the words in title or abstract
+
+
+
+```{r}
+
+
+dataset1 <- dataset[-which(is.na(dataset[,"description"])),]
+dataset2 <- dataset1[-which(dataset1$title == ""),]
+
+url <- c()
+dataset_type <- c()
+keyword_abs <- list()
+keyword_title <- list()
+#keyword_type <- c()
+in_title <- c()
+in_abstract <- c()
+
+
+
+for (i in 1:nrow(dataset2)) {
+  
+  
+  
+  dataset_type[i] <- dataset2[i, "data_type"]
+  url[i] <- dataset2[i, "url"]
+  
+  
+  
+  
+  # search on the abstract and note the list of keywords that match the dataset types
+
+  keyword_abs[[i]] <- unique(get_keywords(input_string = dataset2$description[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) == 0){
+    
+    in_abstract[i] <- "no"
+    
+  } else if (length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) > 0){
+    
+    in_abstract[i] <- "yes"
+    
+  }
+  
+  
+  
+
+  # search on the title and note the list of keywords that match the dataset types
+
+  keyword_title[[i]] <- unique(get_keywords(input_string = dataset2$title[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_title[i][!sapply(keyword_title[i], is.null)]) == 0){
+    
+    in_title[i] <- "no"
+    
+  } else if (length(keyword_title[i][!sapply(keyword_title[i], is.null)]) > 0){
+    
+    in_title[i] <- "yes"
+    
+  } 
+  
+  
+  
+}
+
+
+
+
+#data.frame(dataset_type, keyword_abs, keyword_title, in_title, in_abstract)
+
+
+df_data_type_abs <- data.frame(url, dataset_type, in_abstract, in_title)
+df_data_type_abs$keyword_abs <- keyword_abs
+
+#eliminate those datasets without data_type info
+
+df_data_type_abs1 <- df_data_type_abs[df_data_type_abs$dataset_type != "",]
+
+df_data_type_abs1
+
+
+```
+
+
+
+For some reason, keyword_title has 3 less entries that keyword_abstract, and I can't figure out why. So for now I cant obtain the list of words that appear in the title.
+
+
+```{r}
+
+print(paste(length(which(df_data_type_abs1$in_abstract == "yes")), 
+            "with dataset type or synonym explicit in the abstract, out of", length(df_data_type_abs1$in_abstract)))
+
+print(paste("so", 
+      round(length(which(df_data_type_abs1$in_abstract == "yes"))/length(df_data_type_abs1$in_abstract)*100, 1),
+"%"))
+
+
+
+```
+
+```{r}
+print(paste(length(which(df_data_type_abs1$in_title == "yes")), 
+            "with dataset type or synonym explicit in the title, out of", length(df_data_type_abs1$in_title)))
+
+print(paste("so", 
+      round(length(which(df_data_type_abs1$in_title == "yes"))/length(df_data_type_abs1$in_title)*100, 1),
+"%"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
