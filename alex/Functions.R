@@ -15,6 +15,31 @@ count_by_relevance <- function(df) {
 }
 
 
+
+### 1.1. Count relevance categories by source
+
+count_relevance_by_source <- function(df) {
+  
+  dataset_source <- df[-which(df$source == ""), ]
+  
+  df_relevance_source <- as.data.frame.matrix(table(dataset_source$dataset_relevance,dataset_source$source))
+  
+  df_relevance_source$relevance <- rownames(df_relevance_source)
+  
+  df_relevance_source1 <- df_relevance_source[,c(ncol(df_relevance_source),1:(ncol(df_relevance_source)-1))]
+  
+  rownames(df_relevance_source1) <- NULL
+  
+  df_relevance_source1$relevance <- factor(df_relevance_source1$relevance, levels = c("H", "M", "L", " X", "No dataset", "cant access"))
+  
+  df_relevance_source2 <- df_relevance_source1[order(df_relevance_source1$relevance), ]
+  
+  return(df_relevance_source2)
+  
+}
+
+
+
 ## 2. Queries performance
 ###################################################
 
@@ -264,6 +289,84 @@ plot_queries_index <- function(df) {
 
 
 
+
+
+### Z scores
+
+
+calculate_z.score_queries <- function(df) {
+  
+  
+  #split rows in function of character comas
+  
+  dataset_q <- dataset %>%               
+    separate_rows(id_query, sep=",") 
+  
+  
+  dataset_q$id_query  <- as.factor(dataset_q$id_query)
+  
+  
+  ## Eliminate  "No dataset", "cant access", and "NA"
+  
+  dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "No dataset"),]
+  dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "cant access"),]
+  
+  dataset_q$relevance_binary <- dataset_q$dataset_relevance
+  
+  
+  ## Convert relevance into binary classification (Relevant/Unrelevant)
+  
+  
+  dataset_q$relevance_binary  <- gsub('H', 'R',
+                                      gsub('M', 'R',
+                                           gsub('L', 'U',
+                                                gsub("X", "U", dataset_q$relevance_binary))))
+  
+  
+  ## Calculate precision for each query
+  
+  queries <- levels(dataset_q$id_query)
+  
+  
+  
+  TP <- numeric(length(queries))
+  FP <- numeric(length(queries))
+  FN <- numeric(length(queries))
+  
+  queries <- as.numeric(queries)
+  
+  for (i in 1:length(queries)) {
+    
+    TP[i] <- length(which(dataset_q$id_query == queries[i] & 
+                            dataset_q$relevance_binary == "R"))
+    
+    FP[i] <- length(which(dataset_q$id_query == queries[i]))
+    
+    FN[i] <- length(which(dataset_q$relevance_binary == "R" &
+                            dataset_q$id_query != queries[i]))
+    
+  }
+  
+  
+  Precision = TP / (TP + FP)
+  
+  Recall = TP / (TP + FN)
+  
+  Fscore = 2 * (Precision * Recall) / (Precision + Recall)
+  
+  df_scores <- data.frame(queries, Fscore,Precision, Recall)
+  
+  df_scores <- df_scores[order(-Fscore),]
+  
+  return(df_scores)
+  
+  
+}
+
+
+
+
+
 ## 3. Temporal duration and frequency
 ###################################################
 
@@ -369,8 +472,8 @@ plot_duration_relevance <- function(df, counts_Na) {
   
   df$dataset_relevance <- as.factor(df$dataset_relevance)
   
-  df$dataset_relevance <- ordered(df$dataset_relevance,
-                                                    levels = c("X", "L", "M", "H"))
+  df$dataset_relevance <- factor(df$dataset_relevance,
+                                                    levels = c(" X", "L", "M", "H"))
   
   
   plot_rel_duration <- ggplot(subset(df, !is.na(df$dataset_relevance)), 
@@ -736,7 +839,7 @@ compute_df_relevance_year.range <- function(df) {
   
   dataset_valid1 <- dataset_valid[is.na(dataset_valid$year) == FALSE, ]
   
-  dataset_valid1$dataset_relevance <- ordered(dataset_valid1$dataset_relevance,levels = c("", "No dataset", "cant access", "X", "L", "M", "H"))
+  dataset_valid1$dataset_relevance <- ordered(dataset_valid1$dataset_relevance,levels = c("", "No dataset", "cant access", " X", "L", "M", "H"))
   
   
   
@@ -771,7 +874,7 @@ plot_relevance_year.range <- function(df) {
   
   dataset_valid1 <- dataset_valid[is.na(dataset_valid$year) == FALSE, ]
   
-  dataset_valid1$dataset_relevance <- ordered(dataset_valid1$dataset_relevance,levels = c("", "No dataset", "cant access", "X", "L", "M", "H"))
+  dataset_valid1$dataset_relevance <- ordered(dataset_valid1$dataset_relevance,levels = c("", "No dataset", "cant access", " X", "L", "M", "H"))
   
   
   
@@ -891,10 +994,64 @@ get_keywords <- function(input_string, dataset_types) {
 
 
 
+## Source of information across time
 
 
 
 
+df_source_time <- function(df) {
+  
+  dataset_l <- df[,c("publication_date", "source")]
+  
+  dataset_l <- dataset_l[-is.na(dataset_l),]
+  
+  dataset_l <- dataset_l[-which(is.na(dataset_l$publication_date)),]
+  
+  dataset_l <- dataset_l[-which((dataset_l$publication_date) == ""),]
+  
+  # Transforming date formats to years. Many entries are only years -> keep those to add them later.
+  # Those with length 1 will only contain the year:
+  
+  
+  dataset_l$publication_date <- gsub("-", "/", dataset_l$publication_date)
+  
+  
+  year <- numeric(length(dataset_l$publication_date))
+  
+  for (i in 1:length(dataset_l$publication_date)) {
+    
+    if(dataset_l$source[i] == "dryad" & nchar(dataset_l$publication_date[i]) >= 5){
+      
+      year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%d/%m/%Y"), format ="%Y")
+      
+      
+    }else if(nchar(dataset_l$publication_date[i]) == 4){
+      
+      year[i] <- dataset_l$publication_date[i]
+      
+    }else if(dataset_l$source[i] == "semantic_scholar" & nchar(dataset_l$publication_date[i]) >= 5){
+      
+      year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%d/%m/%Y"), format ="%Y")
+      
+      
+    }else  if(dataset_l$source[i] == "zenodo" & nchar(dataset_l$publication_date[i]) >= 5){
+      
+      year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%Y/%m/%d"), format ="%Y")
+    }
+    
+    
+  }
+  
+  # semantic_scholar changes the format of the date, so now I am changing only those that give NA because the order d/m/Y was different
+  
+  year[which(is.na(year))] <- format(as.POSIXct(dataset_l$publication_date[which(is.na(year))], format = "%Y/%m/%d"), format ="%Y")
+  
+  dataset_l$year <- year
+  
+  
+  return(dataset_l)
+  
+}
 
 
 

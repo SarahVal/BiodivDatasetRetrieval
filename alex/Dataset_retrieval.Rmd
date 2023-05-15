@@ -29,6 +29,7 @@ library(hrbrthemes)
 library(ggpubr)
 library(tidyr)
 library(stringr)
+library(ggrepel)
 source("Functions.R")
 ```
 
@@ -46,6 +47,10 @@ my.theme<-theme(axis.text=element_text(size=15),
 
 ```
 
+
+
+
+
 #### Read data
 
 Eliminate empty rows and those where dataset_relevance is left in blank (they correspond to referred publications in the retrieved datasets and are not used in these analyses):
@@ -56,7 +61,13 @@ dataset <- read.csv("091222_Merged_datasets.csv", header = TRUE)
 
 dataset <- dataset[dataset$dataset_relevance != "",]
 
+dataset$dataset_relevance <- recode_factor(dataset$dataset_relevance, X = " X") #correct factor name (x with/without space)
+
+head(dataset)
+
 ```
+
+
 
 ## 1. Number of datasets and relevance categories
 
@@ -74,6 +85,53 @@ df_N_relevance <- count_by_relevance(dataset)
 
 df_N_relevance
 ```
+
+
+
+### 1.1 Relevance counts by source
+
+```{r}
+
+df_rel_source <- count_relevance_by_source(df = dataset)
+
+df_rel_source
+
+
+```
+
+Plot the results:
+
+```{r}
+
+df_rel_source_melt <- melt(df_rel_source, id ="relevance")
+
+plot_relevance_source <- ggplot(df_rel_source_melt, 
+                                          aes(x=relevance, y=value, group = variable, 
+                                              color = variable,shape=variable )) +
+  scale_x_discrete(limits = rev(levels(df_rel_source_melt$relevance)))+
+    geom_segment( aes(x=relevance ,xend=relevance, y=0, yend=max(value)), color="grey") +
+    geom_point(size=7, alpha = 0.8) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Query ID")+
+    ylab("publications counts") +
+    #scale_color_manual(values = c("gray60", "red","purple2", "dodgerblue", "black", "black"))+
+   # scale_shape_manual(values = c(15, 19, 19, 19, 1,13))+
+    my.theme
+
+
+plot_relevance_source
+
+#ggsave("plots/plot_relevance_source.png", height = 7, width = 12)
+
+```
+
+
 
 ## 2. Queries performance
 
@@ -232,76 +290,17 @@ F SCORE = 2* precision * recall / precision + recall
 Split grouped queries into individual ones
 
 ```{r}
-#split rows in function of character comas
 
-dataset_q <- dataset %>%               
-  separate_rows(id_query, sep=",") 
+df_zscores_queries <- calculate_z.score_queries(df = dataset)
 
-
-dataset_q$id_query  <- as.factor(dataset_q$id_query)
-
-
-## Eliminate  "No dataset", "cant access", and "NA"
-
-dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "No dataset"),]
-dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "cant access"),]
-
-dataset_q$relevance_binary <- dataset_q$dataset_relevance
-
-
-## Convert relevance into binary classification (Relevant/Unrelevant)
-
-
-dataset_q$relevance_binary  <- gsub('H', 'R',
-           gsub('M', 'R',
-           gsub('L', 'U',
-                gsub("X", "U", dataset_q$relevance_binary))))
-
-
-## Calculate precision for each query
-
-queries <- levels(dataset_q$id_query)
-
-
-
-TP <- numeric(length(queries))
-FP <- numeric(length(queries))
-FN <- numeric(length(queries))
-
-queries <- as.numeric(queries)
-
-for (i in 1:length(queries)) {
-  
-  TP[i] <- length(which(dataset_q$id_query == queries[i] & 
-                          dataset_q$relevance_binary == "R"))
-  
-  FP[i] <- length(which(dataset_q$id_query == queries[i]))
-  
-  FN[i] <- length(which(dataset_q$relevance_binary == "R" &
-                          dataset_q$id_query != queries[i]))
-  
-}
-
-
-Precision = TP / (TP + FP)
-
-Recall = TP / (TP + FN)
-
-Fscore = 2 * (Precision * Recall) / (Precision + Recall)
-
-df_scores <- data.frame(queries, Fscore,Precision, Recall)
-
-df_scores <- df_scores[order(-Fscore),]
-
-df_scores
-
+df_zscores_queries
 
 ```
 
 Plot results
 
 ```{r}
-plot_queries_scores <- ggplot(df_scores, aes(x = Precision, y = Recall, colour = Fscore)) +
+plot_queries_scores <- ggplot(df_zscores_queries, aes(x = Precision, y = Recall, colour = Fscore)) +
   geom_point(size = 10)+
   geom_label_repel(aes(label = queries))+
   theme_bw()+
@@ -557,66 +556,24 @@ print(paste("A total of", length(df_journals_counts$Journal), "journals" ))
 
 
 ```{r}
-dataset_l <- dataset[,c("publication_date", "source")]
 
-dataset_l <- dataset_l[-is.na(dataset_l),]
+df.source_time <- df_source_time(df = dataset)
 
-dataset_l <- dataset_l[-which(is.na(dataset_l$publication_date)),]
-
-dataset_l <- dataset_l[-which((dataset_l$publication_date) == ""),]
-
-# Transforming date formats to years. Many entries are only years -> keep those to add them later.
-# Those with length 1 will only contain the year:
-
-
-dataset_l$publication_date <- gsub("-", "/", dataset_l$publication_date)
-
-
-year <- numeric(length(dataset_l$publication_date))
-
-for (i in 1:length(dataset_l$publication_date)) {
-  
-  if(dataset_l$source[i] == "dryad" & nchar(dataset_l$publication_date[i]) >= 5){
-    
-    year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%d/%m/%Y"), format ="%Y")
-    
-    
-  }else if(nchar(dataset_l$publication_date[i]) == 4){
-    
-    year[i] <- dataset_l$publication_date[i]
-    
-  }else if(dataset_l$source[i] == "semantic_scholar" & nchar(dataset_l$publication_date[i]) >= 5){
-    
-     year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%d/%m/%Y"), format ="%Y")
-    
-    
-  }else  if(dataset_l$source[i] == "zenodo" & nchar(dataset_l$publication_date[i]) >= 5){
-    
-    year[i] <- format(as.POSIXct(dataset_l$publication_date[i], format = "%Y/%m/%d"), format ="%Y")
-  }
-  
-  
-}
-
-dataset_l[50,]
-
-year
-
-
-# semantic_scholar changes the format of the date, so now I am changing only those that give NA because the order d/m/Y was different
-
-year[which(is.na(year))] <- format(as.POSIXct(dataset_l$publication_date[which(is.na(year))], format = "%Y/%m/%d"), format ="%Y")
+df.source_time
 
 ```
 
+
+
+
+
 ```{r}
-df_plot_source_time <- as.data.frame(table(dataset_l$year,dataset_l$source ))
+df_plot_source_time <- as.data.frame(table(df.source_time$year,df.source_time$source ))
 
 colnames(df_plot_source_time) <- c("year", "source", "N")
 
 df_plot_source_time$N <- as.numeric(df_plot_source_time$N)
 
-str(df_plot_source_time)
 
 plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = source, color = source)) +
   geom_line(size = 1)+
@@ -625,6 +582,8 @@ plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = sou
   theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
   ylab("N retrieved articles") +
   scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+plot_source_time
 
 
 #ggsave("plot_source_time.png", height = 7, width = 13)
@@ -639,8 +598,8 @@ plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = sou
 
 df_location_info <- compute_df_location_info(df = dataset)
 
-
 ```
+
 
 ```{r}
 df_plot_loc_spatial.range <- df_location_info[df_location_info$spatial_range_position != "",]
