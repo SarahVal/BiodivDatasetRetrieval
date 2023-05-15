@@ -862,6 +862,32 @@ plot_location_info <- function(df, variable, colname) {
 
 
 
+################################
+
+# Get list of keywords present in a string
+
+
+get_keywords <- function(input_string, dataset_types) {
+  
+  vec_keyword_present <- c()
+  vec_keyword <- c()
+  
+  for (i in 1:nrow(dataset_types)) {
+    
+    if(str_detect(string = input_string, pattern = dataset_types$keywords[i]) == TRUE){
+      
+      vec_keyword <- dataset_types$keywords[i]
+      
+    }
+    
+    vec_keyword_present[i] <- vec_keyword[!is.na(vec_keyword)]
+    
+  }
+  
+  return(vec_keyword_present)
+  
+}
+
 
 
 
