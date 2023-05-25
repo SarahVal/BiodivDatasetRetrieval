@@ -30,6 +30,8 @@ library(ggpubr)
 library(tidyr)
 library(stringr)
 library(ggrepel)
+library(readxl)
+
 source("Functions.R")
 ```
 
@@ -53,35 +55,37 @@ my.theme<-theme(axis.text=element_text(size=15),
 
 #### Read data
 
-Eliminate empty rows and those where dataset_relevance is left in blank (they correspond to referred publications in the retrieved datasets and are not used in these analyses):
 
 ```{r}
 
-dataset <- read.csv("091222_Merged_datasets.csv", header = TRUE)
+#dataset <- read.csv("repo_datasets.csv", header = TRUE,sep=";")
+dataset <- read_excel("df_repository.xlsx")
+table(dataset$valid_yn)
+```
+```{r}
 
+table(dataset$reason_non_valid[which(dataset$valid_yn=="no")])
+```
+
+Eliminate empty rows and those where dataset_relevance is left in blank (they correspond to referred publications in the retrieved datasets and are not used in these analyses):
+```{r}
 dataset <- dataset[dataset$dataset_relevance != "",]
-
-dataset$dataset_relevance <- recode_factor(dataset$dataset_relevance, X = " X") #correct factor name (x with/without space)
+dataset <- dataset %>% dplyr::filter(valid_yn == "yes")
+dataset$dataset_relevance <- as.factor(dataset$dataset_relevance)
 
 dataset <- dataset[dataset$source != "semantic_scholar",]
-
+dataset$id_query  <- stringr::str_trim(dataset$id_query )
+dataset$dataset_relevance  <- str_trim(dataset$dataset_relevance )
 head(dataset)
-
 ```
 
 
 
 ## 1. Number of datasets and relevance categories
 
-```{r}
-total_publications <- length(dataset$dataset_relevance)
-
-print(paste("A total of", total_publications, "publications retrieved"))
-  
-```
 
 ```{r}
-dataset$dataset_relevance <- as.factor(dataset$dataset_relevance)
+
 
 df_N_relevance <- count_by_relevance(dataset)
 
@@ -144,19 +148,38 @@ plot_relevance_source
 ```{r}
 
 dataset$id_query <- as.factor(dataset$id_query)
-
 df_queries_counts <- compute_df_n_relevance_queries(data = dataset)
 
 df_queries_counts
 ```
 
 Plot the results:
-
 ```{r}
-plot_group.queries_relevance <- plot_queries_relevance_raw(df_queries_counts)
+df_queries_counts_all <- dataset %>% 
+  group_by(dataset_relevance, id_query) %>% 
+  summarise(n = n()) 
 
-plot_group.queries_relevance
+df_queries_counts_all <- df_queries_counts_all %>% dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% mutate(dataset_relevance = factor(dataset_relevance))
 
+plot_group.queries_relevance  <- ggplot(df_queries_counts_all, 
+                                          aes(x=id_query, y=n, group = dataset_relevance, 
+                                              color = dataset_relevance,shape=dataset_relevance )) +
+  geom_segment( aes(x=id_query ,xend=id_query, y=0, yend=max(n)), color="grey") +
+    geom_point(size=4, alpha = 0.8) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Query ID")+
+    ylab("publications counts") +
+    scale_color_manual(values = c( "red","purple2", "dodgerblue", "black"))+
+    scale_shape_manual(values = c(19, 19, 19, 1))+
+    my.theme
+
+plot_group.queries_relevance 
 #ggsave("plots_repo/plot_group.queries_relevance_all.png", height = 7, width = 12)
 ```
 
@@ -167,6 +190,26 @@ plot_group.queries_relevance
 
 #### Individual queries
 
+```{r}
+
+convert_query = data.frame("id_query" = as.character(seq(0,10)), "query" = c(
+"survey + species",
+"time series + species",
+"inventory + species",
+"species",
+"abundance + species",
+"occurrence + species",
+"population + species",
+"sites + species",
+"sampling + species",
+"collection + species",
+"density + species"
+  
+))
+
+
+dataset_q
+```
 
 ```{r}
 
@@ -174,24 +217,41 @@ plot_group.queries_relevance
 
 dataset_q <- dataset %>%               
   separate_rows(id_query, sep=",") 
+dataset_q <- merge(dataset_q, convert_query, by.all="id_query")
 
+dataset_q$query  <- factor(dataset_q$query,
+                              levels= c("species", "occurrence + species", "inventory + species", "collection + species", "sampling + species", "survey + species" , "population + species", "sites + species", "density + species", "abundance + species" , "time series + species" ))
+dataset_q
 
-dataset_q$id_query  <- as.factor(dataset_q$id_query)
-
-
-df_queries_counts_ind <- compute_df_n_relevance_queries(data = dataset_q)
-
-df_queries_counts_ind
 ```
-
-Plot the results
-
 ```{r}
-plot_ind.queries_relevance_ind <- plot_queries_relevance_raw(df_queries_counts_ind)
+df_queries_counts_ind <- dataset_q %>% 
+  group_by(dataset_relevance, query) %>% 
+  summarise(n = n()) 
 
-plot_ind.queries_relevance_ind
+df_queries_counts_ind <- df_queries_counts_ind %>% dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% mutate(dataset_relevance = factor(dataset_relevance))
 
-#ggsave("plots_repo/plot_ind.queries_relevance_all.png", height = 7, width = 12)
+plot_queries_relevance_counts <- ggplot(df_queries_counts_ind, 
+                                          aes(x=query, y=n, group = dataset_relevance, 
+                                              color = dataset_relevance,shape=dataset_relevance )) +
+  geom_segment( aes(x=query ,xend=query, y=0, yend=max(n)), color="grey") +
+    geom_point(size=4, alpha = 0.8) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Query ID")+
+    ylab("publications counts") +
+    scale_color_manual(values = c( "red","purple2", "dodgerblue", "black"))+
+    scale_shape_manual(values = c(19, 19, 19, 1))+
+    my.theme
+
+plot_queries_relevance_counts
+
+
 ```
 
 - query 4 shows the highest number of relevant datasets for high, moderate and low relevance datasets, but retrieves almost double number of articles (~70) compared to the rest of queries.
