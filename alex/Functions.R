@@ -112,17 +112,14 @@ compute_df_n_relevance_queries <- function(data) {
 
 plot_queries_relevance_raw <- function(df) {
   
-  df_queries_counts_ord_npubl <-df[order(df$n_publications),]
+ # df_queries_counts_ord_npubl <-df[order(df$n_publications),]
   
-  df_queries_counts_ord_npubl <- melt(df_queries_counts_ord_npubl, id ="queries")
-  
-  df_queries_counts_ord_npubl <- df_queries_counts_ord_npubl[df_queries_counts_ord_npubl$value > 0,]
+  df_queries_counts_ord_npubl <- melt(df, id ="queries")
   
   df_queries_counts_ord_npubl$variable <- factor(df_queries_counts_ord_npubl$variable, 
-                                                 levels = c("n_publications", 
+                                                 levels = c("n_total", 
                                                             "n_high", "n_moderate", 
-                                                            "n_low", "n_non_relevant", 
-                                                            "n_no_dataset"))
+                                                            "n_low", "n_non_relevant"))
   
   plot_queries_relevance_counts <- ggplot(df_queries_counts_ord_npubl, 
                                           aes(x=queries, y=value, group = variable, 
