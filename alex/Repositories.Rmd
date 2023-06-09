@@ -1,0 +1,784 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+**Script description:** This script manipulates the raw data of the retrieved datasets to show summary tables and figures.
+
+
+```{r}
+library(dplyr)
+library(reshape)
+library(ggplot2)
+library(hrbrthemes)
+library(ggpubr)
+library(tidyr)
+library(stringr)
+library(ggrepel)
+library(readxl)
+
+source("Functions.R")
+```
+
+Some parameters for the plots:
+
+```{r}
+my.theme<-theme(axis.text=element_text(size=15),
+        axis.title = element_text(size = 17),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        panel.background = element_rect(fill = 'white'))
+
+```
+
+
+
+
+#### Read data
+
+
+```{r}
+
+dataset <- read_excel("df_repository.xlsx")
+table(dataset$valid_yn)
+
+```
+
+
+```{r}
+
+table(dataset$reason_non_valid[which(dataset$valid_yn=="no")])
+```
+
+
+Eliminate empty rows and those where dataset_relevance is left in blank (they correspond to referred publications in the retrieved datasets and are not used in these analyses):
+
+```{r}
+dataset <- dataset[dataset$dataset_relevance != "",]
+dataset <- dataset %>% dplyr::filter(valid_yn == "yes")
+dataset$dataset_relevance <- as.factor(dataset$dataset_relevance)
+
+dataset <- dataset[dataset$source != "semantic_scholar",]
+dataset$id_query  <- stringr::str_trim(dataset$id_query )
+dataset$dataset_relevance  <- str_trim(dataset$dataset_relevance )
+head(dataset)
+```
+
+
+
+## 1. Number of datasets and relevance categories
+
+
+```{r}
+
+df_N_relevance <- count_by_relevance(dataset)
+
+df_N_relevance
+```
+
+
+
+
+
+
+
+## 2. Queries performance
+
+### 2.1. N publications and relevance categories per query
+
+#### Grouped queries
+
+```{r}
+
+dataset$id_query <- as.factor(dataset$id_query)
+df_queries_counts <- compute_df_n_relevance_queries(data = dataset)
+
+df_queries_counts
+```
+
+Plot the results:
+```{r}
+df_queries_counts_all <- dataset %>% 
+  group_by(dataset_relevance, id_query) %>% 
+  summarise(n = n()) 
+
+df_queries_counts_all <- df_queries_counts_all %>% dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% mutate(dataset_relevance = factor(dataset_relevance))
+
+plot_group.queries_relevance  <- ggplot(df_queries_counts_all, 
+                                          aes(x=id_query, y=n, group = dataset_relevance, 
+                                              color = dataset_relevance,shape=dataset_relevance )) +
+  geom_segment( aes(x=id_query ,xend=id_query, y=0, yend=max(n)), color="grey") +
+    geom_point(size=4, alpha = 0.8) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Query ID")+
+    ylab("publications counts") +
+    scale_color_manual(values = c( "red","purple2", "dodgerblue", "black"))+
+    scale_shape_manual(values = c(19, 19, 19, 1))+
+    my.theme
+
+plot_group.queries_relevance 
+#ggsave("plots_repo/plot_group.queries_relevance_all.png", height = 7, width = 12)
+```
+
+-   Query 4 delivers the highest number of relevant datasets (highest number of High, Moderate and Low relevance datasets), but also retrieves by far the higher amount of publication.
+
+-   Some queries do not add any relevant publication (e.g. "0,6,5,7" or "7,2,9").
+
+
+#### Individual queries
+
+```{r}
+
+convert_query = data.frame("id_query" = as.character(seq(0,10)), "query" = c(
+"survey + species",
+"time series + species",
+"inventory + species",
+"species",
+"abundance + species",
+"occurrence + species",
+"population + species",
+"sites + species",
+"sampling + species",
+"collection + species",
+"density + species"
+  
+))
+
+
+```
+
+```{r}
+
+#split rows in function of character comas
+
+dataset_q <- dataset %>%               
+  separate_rows(id_query, sep=",") 
+dataset_q <- merge(dataset_q, convert_query, by.all="id_query")
+
+length(dataset_q$id_query == "species")
+
+dataset_q$query  <- factor(dataset_q$query,
+                              levels= c("species", "occurrence + species", "inventory + species", "collection + species", "sampling + species", "survey + species" , "population + species", "sites + species", "density + species", "abundance + species" , "time series + species" ))
+
+
+
+
+
+```
+
+
+
+
+```{r}
+df_queries_counts_ind <- dataset_q %>% 
+  group_by(dataset_relevance, query) %>% 
+  summarise(n = n()) 
+
+df_queries_counts_ind <- df_queries_counts_ind %>% dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% mutate(dataset_relevance = factor(dataset_relevance))
+
+
+
+plot_queries_relevance_counts <- ggplot(df_queries_counts_ind, 
+                                          aes(x=query, y=n, group = dataset_relevance, 
+                                              color = dataset_relevance,shape=dataset_relevance )) +
+  geom_segment( aes(x=query ,xend=query, y=0, yend=max(n)), color="grey") +
+    geom_point(size=4, alpha = 0.8) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Query ID")+
+    ylab("publications counts") +
+    scale_color_manual(name = "dataset relevance",
+                       values = c( "red","purple2", "dodgerblue", "black"))+
+    scale_shape_manual(name = "dataset relevance", 
+                       values = c(19, 19, 19, 1))+
+    my.theme
+
+plot_queries_relevance_counts
+
+ggsave("plots_repo/plot_queries_raw.png", height = 5, width = 9)
+
+```
+
+
+### 2.2 Classify queries by their relevance (index)
+
+Puctuations for the relevance categories:
+
+-   High = 5
+-   Mod = 2
+-   Low = 0.5
+-   non_relevant = 0
+
+*Index 1*: is the result of summing the puntuations assigned to each relevance category
+
+Index 1 = sum punctuations = (N High \* 5) + (N Mod \* 2) + (N Low \* 0.5)
+
+*Index 2*: is the Index1 but accounting for the total number of publications retrieved by the query.
+
+Index 2 = sum punctuations / n publications retrieved
+
+
+#### Grouped queries
+
+```{r}
+
+df_queries_counts_index <- compute_index12(df_counts = df_queries_counts, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+
+df_queries_counts_index
+
+```
+
+Queries 3, 4, 0, and 6 are the top 4 index1 values. Queries 3 and 4 have far higher index than the rest.
+
+Plot the results:
+
+```{r}
+
+plot_group.queries_index12 <- plot_queries_index(df = df_queries_counts_index)
+
+plot_group.queries_index12
+
+#ggsave("plots_repo/plot_group.queries_index12.png", height = 5, width = 11)
+```
+
+-   Index 1 shows that queries "3" and "4" offer the higher perfomance, followed by "6" and "5".
+
+-   Index 2 shows that querie "6,7,5" offer the highest performance, followed by "7,8", "6,7", and "5,6,7,8,9"
+
+
+#### individual queries
+
+```{r}
+df_queries_counts_index_ind <- compute_index12(df_counts = df_queries_counts_ind, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+
+df_queries_counts_index_ind
+```
+
+
+Plot the results
+
+```{r}
+plot_queries_index12_ind <- plot_queries_index(df = df_queries_counts_index_ind)
+
+plot_queries_index12_ind
+
+#ggsave("plots_repo/plot_ind.queries_index12.png", height = 5, width = 11)
+```
+
+
+
+### 2.3. F SCORE
+
+Precision
+Recall
+
+Binary view: M,H relevant | L,X unrevelant
+
+
+N relevant datasets -> True Positives (TP)
+
+N unrelevant datasets -> False Positives (FP)
+
+Sum of all relevant publications of the dataset that are not detected = FN
+
+PRECISION = TP / TP + FP
+
+RECALL = TP / TP + FN
+
+
+F SCORE = 2* precision * recall / precision + recall
+
+
+
+Split grouped queries into individual ones
+
+
+```{r}
+dataset_q
+```
+
+
+
+
+
+```{r}
+
+df_zscores_queries <- calculate_z.score_queries(df = dataset)
+
+df_zscores_queries
+
+
+```
+
+Plot results
+
+```{r}
+
+mid = mean(df_zscores_queries$Fscore)
+
+plot_queries_scores <- ggplot(df_zscores_queries, aes(x = Precision, y = Recall, colour = Fscore)) +
+  geom_point(size = 10)+
+  geom_label_repel(aes(label = query),alpha = 0.75, 
+                   label.padding=.1)+
+  scale_color_gradient2(midpoint=mid, low="dodgerblue", mid="purple2",
+                     high="red", space ="Lab" )+
+  theme_bw()+
+  my.theme
+
+plot_queries_scores
+
+#ggsave("plots_repo/plot_queries_scores.png", height = 7, width = 7)
+
+```
+
+```{r}
+
+combined_plot_queries <- ggarrange(plot_queries_relevance_counts,
+                                   plot_queries_scores, 
+                                   nrow = 1,
+                                   ncol = 2)
+
+ggsave("plots_repo/combined_plot_queries.png",
+       height = 6,
+       width = 13)
+
+```
+
+
+
+## 3. Temporal range and duration
+
+
+## Datasets temporal range
+
+
+
+
+
+```{r}
+
+
+
+dataset_temp_range <- dataset[,c("url", "temp_range_i", "temp_range_f")]
+
+dataset_temp_range <- dataset_temp_range[-which(is.na(dataset_temp_range$temp_range_i)),]
+
+dataset_temp_range <- as.data.frame((dataset_temp_range))
+
+#dataset_temp_range <- melt(dataset_temp_range, measure.vars = c("temp_range_i", "temp_range_f"))
+
+#dataset_temp_range <- melt(dataset_temp_range, id ="url")
+
+dataset_temp_range$temp_range_i <- as.numeric(dataset_temp_range$temp_range_i)
+dataset_temp_range$temp_range_f <- as.numeric(dataset_temp_range$temp_range_f)
+
+dataset_temp_range <- dataset_temp_range[-which(dataset_temp_range$temp_range_i == -20000),]
+
+dataset_temp_range[which(dataset_temp_range$temp_range_i == dataset_temp_range$temp_range_f),"temp_range_f"] <- dataset_temp_range[which(dataset_temp_range$temp_range_i == dataset_temp_range$temp_range_f),"temp_range_f"]+0.5
+
+ggplot(dataset_temp_range, aes(y=url)) +
+  geom_segment(aes(x=temp_range_i, xend=temp_range_f, y=url, yend=url), size=3)+
+  xlab("temporal range (year)") +
+  ylab ("datasets")+
+  theme_bw() +
+  my.theme +
+  theme(axis.text.y=element_blank())
+
+
+ggsave("plots_repo/temporal_range.png", height = 6, width = 10)
+
+```
+
+```{r}
+min(dataset_temp_range$temp_range_i)
+
+dataset_temp_range[dataset_temp_range$temp_range_i == 1875,]
+```
+
+
+### 3.1 Temporal duration counts
+
+How many publications without temporal duration data?
+
+```{r}
+
+
+#nNa <- count_not.reported_temporal.duration(dataset)
+
+print(paste(length(which(dataset$temporal_duration_position == "no")), "publications without temporal duration data"))
+
+
+```
+
+
+Publication counts by temporal duration (years):
+
+```{r}
+  
+df_duration_counts <- count_durations(df = dataset, order_by = "counts")
+
+df_duration_counts
+```
+
+Plot the results:
+
+```{r}
+plot_temp_duration <- plot_duration_counts(df = df_duration_counts, 
+                                           counts_Na = nNa)
+
+plot_temp_duration
+
+ggsave("plots_repo/plot_temp_duration.png", height = 5, width = 9)
+
+```
+
+Average duration (for those with data):
+
+```{r}
+
+dataset_temp_duration <- subset(dataset, 
+                                  temporal_duration_y > 0 | temporal_duration_y == "no",
+                                  select = c(temporal_duration_y,id_query))
+  
+  dataset_temp_duration$temporal_duration_y <- as.numeric(dataset_temp_duration$temporal_duration_y)
+  
+
+print(paste("mean of",
+            round(mean(na.omit(dataset_temp_duration$temporal_duration_y)),digits = 1),
+            "years"))
+```
+
+
+
+## 4. Spatial range
+
+### 4.1 count spatial range publications
+
+WARNING: publications that cant be accessed are not counted
+
+How many publications without spatial range data?
+
+
+
+
+```{r}
+
+n_not_reported <- count_not.reported_spatial_range(dataset)
+
+print(paste(n_not_reported, "publications without spatial range data"))
+
+```
+
+Spatial ranges are divided according to the thresholds established to determine a low, moredate and high spatial range: \<5000, 500-15000, \>15000
+
+```{r}
+
+plot_spatial_range_counts <- plot_spat.range_counts(dataset)
+
+
+#ggsave("plots_repo/plot_spatial_range_counts.png", height = 6, width = 6)
+
+plot_spat.range_counts <- function(df) {
+  
+  dataset1 <- df[df$dataset_relevance != "cant access",]
+  
+  dataset1$dataset_relevance <- as.factor(dataset1$dataset_relevance)
+  
+  spatial_range_km2_vec <- dataset1$spatial_range_km2[dataset1$spatial_range_km2 != ""]
+  
+  spatial_range_km2_vec <- spatial_range_km2_vec[!is.na(spatial_range_km2_vec)]
+  
+  spatial_range_km2_vec <- as.numeric(spatial_range_km2_vec) 
+  
+
+  
+  
+  cuts_range_km2_vec <- cut(spatial_range_km2_vec, breaks = c(0,5000, 15000, 
+                                                              max(spatial_range_km2_vec, na.rm = TRUE)), 
+                            include.lowest = TRUE)
+  
+  df_cuts_range_km2_vec <- as.data.frame(table(cuts_range_km2_vec))
+  
+  #By default, the argument right is set to TRUE, so the intervals are opened on the left and closed on the right (x, y].
+  
+  df_cuts_range_km2_vec$Freq <- as.numeric(df_cuts_range_km2_vec$Freq)
+  
+  ######################################################################
+  
+  colnames(df_cuts_range_km2_vec) = c("ranges", "counts")
+  
+  df_cuts_range_km2_vec$ranges <- as.factor(df_cuts_range_km2_vec$ranges)
+  
+  plot <- ggdotchart(df_cuts_range_km2_vec, x = "ranges", y = "counts",
+                              size = 5, 
+                              add = "segment",
+                              xlab = "Spatial range (km2)",
+                              ylab = "N articles",
+                              sorting = "none",
+                              add.params = list(color = "lightgray", size = 1.3),
+                              position = position_dodge(0.45),
+                              ggtheme = theme_pubclean(),
+                              title = "Spatial range in retrieved datasets")+
+    scale_x_discrete(labels = c("=< 5.000", "(5.000-15.0000]", "> 15.000"))+
+    theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
+    my.theme
+  
+  return(plot)
+  
+  
+}
+
+```
+
+Average spatial range (for those with data):
+
+```{r}
+
+dataset1 <- dataset[dataset$dataset_relevance != "cant access",]
+  
+  dataset1$dataset_relevance <- as.factor(dataset1$dataset_relevance)
+  
+  spatial_range_km2_vec <- dataset1$spatial_range_km2[dataset1$spatial_range_km2 != ""]
+  
+  spatial_range_km2_vec <- spatial_range_km2_vec[!is.na(spatial_range_km2_vec)]
+  
+  spatial_range_km2_vec <- as.numeric(spatial_range_km2_vec) 
+
+
+print(paste("mean of",
+            round(mean(na.omit(spatial_range_km2_vec)), digits = 0),
+            "km2"))
+```
+
+## 5. Temporal duration, spatial range, relevance
+
+```{r}
+
+plot_spatial_temporal_relevance <- plot_spat_temp_relevance(df = dataset)
+
+
+plot_spatial_temporal_relevance
+
+#ggsave("plots_repo/plot_spatial_temporal_relevance.png", height = 6, width = 9)
+
+```
+
+## 6. EBV data types
+
+```{r}
+
+df_data_type_counts <- compute_df_data.type(df = dataset)
+
+df_data_type_counts
+
+
+```
+
+Plot the results
+
+```{r}
+
+
+plot_data_type <- plot_data.type_counts(df_data_type_counts)
+
+plot_data_type
+
+#ggsave("plots_repo/plot_data_type.png", height = 6, width = 9)
+
+
+
+```
+
+### Combine plots
+
+```{r}
+
+plot_combined_corpus <- ggarrange(plot_spatial_temporal_relevance,
+plot_data_type,
+plot_temp_duration,
+plot_spatial_range_counts,
+nrow = 2,
+ncol = 2)
+
+plot_combined_corpus
+
+ggsave("plots_repo/plot_combined_corpus.png", height = 16, width = 16)
+```
+
+
+## 7. Data format
+
+
+Those datasets in the repository that are relevance category X don't have format information.
+
+```{r}
+
+#plot_data_format_counts <- plot_data.type_format(dataset)
+
+#plot_data_format_counts
+
+#ggsave("plots_repo/plot_data_format_counts.png", height = 7, width = 9)
+
+
+```
+
+
+
+
+
+
+## 9. Journals
+
+
+Count publications per journal
+
+```{r}
+
+dataset.j <- dataset[dataset$journal != "" & dataset$journal != "no",]
+
+df_journals_counts <- as.data.frame(table(dataset.j$journal))
+
+colnames(df_journals_counts) = c("Journal", "Publication_counts")
+
+df_journals_counts <- df_journals_counts[order(-df_journals_counts$Publication_counts),]
+
+
+df_journals_counts
+
+
+```
+
+
+
+
+```{r}
+
+print(paste("A total of", length(df_journals_counts$Journal), "journals" ))
+
+```
+
+
+## Location information - temporal range
+
+
+```{r}
+
+dataset_repos <- read_excel("df_repository.xlsx")
+
+dataset_repos <- dataset_repos[which(dataset_repos$title != ""),]
+dataset_repos <- dataset_repos %>% dplyr::filter(valid_yn == "yes")
+
+tempr_position <- dataset_repos$temporal_range_position[-which(is.na(dataset_repos$temporal_range_position))]
+
+tempr_position  <- unlist(strsplit(tempr_position,","))
+
+tempr_position[which(tempr_position == " dataset")] <- gsub(" ", "", tempr_position[which(tempr_position == " dataset")])
+
+tempr_position[which(tempr_position == " source publication text")] <- "source publication text"
+
+tempr_position[which(tempr_position == " source link")] <- "source link"
+
+tempr_position
+
+
+
+```
+
+
+```{r}
+
+
+tempd_position <- dataset_repos$temporal_duration_position[-which(is.na(dataset_repos$temporal_duration_position))]
+tempd_position  <- unlist(strsplit(tempd_position,","))
+
+tempd_position
+
+```
+
+
+```{r}
+
+spatr_position <- dataset_repos$spatial_range_position[-which(is.na(dataset_repos$spatial_range_position))]
+spatr_position  <- unlist(strsplit(spatr_position,","))
+
+spatr_position
+
+```
+
+
+```{r}
+
+feature <- rep("temporal range position", times = length(tempr_position))
+
+df_tempr <- data.frame(tempr_position, feature)
+
+feature <- rep("temporal duration position", times = length(tempd_position))
+
+df_tempd <- data.frame(tempd_position, feature)
+
+feature <- rep("Spatial range position", times = length(spatr_position))
+
+df_spatr <- data.frame(spatr_position, feature)
+
+colnames(df_tempr) <- c("position", "feature")
+colnames(df_tempd) <- c("position", "feature")
+colnames(df_spatr) <- c("position", "feature")
+
+df_positions <- rbind(df_tempr,df_tempd,df_spatr)
+
+```
+
+
+```{r}
+
+levels(as.factor(df_positions$position))
+
+df_positions$position[which(df_positions$position == " source publication text")] <- "source publication text"
+df_positions$position[which(df_positions$position == "no")] <- "not given"
+
+df_positions$position <- factor(df_positions$position, levels=c("not given", "source publication text", "dataset", "source link", "source link abstract"))
+
+df_positions <- as.data.frame(table(df_positions))
+
+ggplot(df_positions, aes(x=position, fill = feature)) +
+geom_bar(position = "dodge") +  labs(x='Team')+
+  theme_bw() +
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
+  scale_x_discrete(guide = guide_axis(n.dodge = 2))
+  #scale_fill_manual(values = c(""))
+
+
+levels(df_positions$feature)
+
+ggplot(df_positions, aes(x=position, y = Freq, group = feature, color = feature)) +
+   geom_segment( aes(x=position ,xend=position, y=0, yend=max(Freq)), color="grey") +
+    geom_point(size=4, alpha = 0.8) +
+    coord_flip() +
+  theme_bw() +
+  my.theme+
+  scale_color_manual(values = c("royalblue3","firebrick1","firebrick4"))+
+  scale_shape_manual(values = c(11,2,3))+
+  ylab("publication counts")
+
+  
+ggsave("plots_repo/location_spat.temp.features_repos.png", height = 5, width = 10)
+
+
+```
+
+

@@ -7,19 +7,6 @@ output:
 
 **Script description:** This script manipulates the raw data of the retrieved datasets to show summary tables and figures.
 
-**Script structure:**
-
-1.  Number of datasets and relevance categories.2. Queries performance - 3. Temporal duration - 4. Spatial range - 5. Temporal duration, spatial range, and relevance - 6. EBV data types - 7. Data format - 8. Datasets accessibility and relevance per year
-
-(TODO)
-
-9.  Journals
-
-10. Taxonomic coverage
-
-11. Dataset location
-
-12. Temporal and spatial information location
 
 ```{r}
 library(dplyr)
@@ -62,6 +49,8 @@ my.theme<-theme(axis.text=element_text(size=15),
 dataset <- read_excel("df_repository.xlsx")
 table(dataset$valid_yn)
 ```
+
+
 ```{r}
 
 table(dataset$reason_non_valid[which(dataset$valid_yn=="no")])
@@ -86,7 +75,6 @@ head(dataset)
 
 ```{r}
 
-
 df_N_relevance <- count_by_relevance(dataset)
 
 df_N_relevance
@@ -96,11 +84,13 @@ df_N_relevance
 
 ### 1.1 Relevance counts by source
 
+(only when comparing semantic scholar with repos)
+
 ```{r}
 
-df_rel_source <- count_relevance_by_source(df = dataset)
+#df_rel_source <- count_relevance_by_source(df = dataset)
 
-df_rel_source
+#df_rel_source
 
 
 ```

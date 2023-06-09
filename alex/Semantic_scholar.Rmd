@@ -1,0 +1,466 @@
+---
+title: "Analyses with Semantic Scholar"
+output: html_notebook
+---
+
+
+
+# SEMANTIC SCHOLAR
+
+
+```{r}
+library(dplyr)
+library(reshape)
+library(ggplot2)
+library(hrbrthemes)
+library(ggpubr)
+library(tidyr)
+library(stringr)
+library(ggrepel)
+library(readxl)
+
+source("Functions.R")
+```
+
+Some parameters for the plots:
+
+```{r}
+my.theme<-theme(axis.text=element_text(size=15),
+        axis.title = element_text(size = 17),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        panel.background = element_rect(fill = 'white'))
+
+```
+
+
+#### Read data
+
+
+```{r}
+
+## Only Repos
+
+dataset_repos <- read_excel("df_repository.xlsx")
+
+dataset_repos <- dataset_repos[which(dataset_repos$title != ""),]
+dataset_repos <- dataset_repos %>% dplyr::filter(valid_yn == "yes")
+
+## Only Semantic Scholar
+
+dataset <- read.csv("../data/outdated/091222_Merged_datasets.csv", header = TRUE,sep=",")
+
+dataset <- dataset[which(dataset$title != ""),]
+dataset <- dataset %>% dplyr::filter(valid_yn == "yes")
+
+dataset <- dataset[which(dataset$source == "semantic_scholar"),]
+```
+
+
+```{r}
+
+table(dataset$valid_yn)
+
+```
+
+
+```{r}
+
+table(dataset$reason_non_valid[which(dataset$valid_yn=="no")])
+```
+
+
+
+
+
+## 1. Number of datasets and relevance categories
+
+
+Only Semantic Schoar
+
+```{r}
+
+df_N_relevance <- count_by_relevance(dataset)
+
+df_N_relevance
+```
+
+
+### 1.1 Relevance counts by source
+
+(only when comparing semantic scholar with repos)
+
+```{r}
+
+dataset_repos_semantic<- read.csv("../data/outdated/091222_Merged_datasets.csv", header = TRUE,sep=",")
+dataset_repos_semantic <- dataset_repos_semantic[which(dataset_repos_semantic$title != ""),]
+dataset_repos_semantic <- dataset_repos_semantic %>% dplyr::filter(valid_yn == "yes")
+
+df_rel_source <- count_relevance_by_source(df = dataset_repos_semantic)
+
+df_rel_source
+
+
+```
+
+Plot the results:
+
+```{r}
+
+df_rel_source_melt <- melt(df_rel_source, id ="relevance")
+colnames(df_rel_source_melt) <- c("relevance", "source", "value")
+
+plot_relevance_source <- ggplot(df_rel_source_melt, 
+                                          aes(x=relevance, y=value, group = source, 
+                                              color = source)) +
+  scale_x_discrete(limits = rev(levels(df_rel_source_melt$relevance)))+
+    geom_segment( aes(x=relevance ,xend=relevance, y=0, yend=max(value)), color="grey") +
+    geom_point(size=5, alpha = 0.8, shape = 15) +
+    coord_flip() +
+    # theme_ipsum() +
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      legend.position="top"
+    ) +
+    xlab("Relevance")+
+    ylab("Datasets counts") +
+    #scale_color_manual(values = c("gray60", "red","purple2", "dodgerblue", "black", "black"))+
+   # scale_shape_manual(values = c(15, 19, 19, 19, 1,13))+
+    my.theme+
+  labs(color = "source")
+
+
+plot_relevance_source
+
+ggsave("plots_semantic_scholar/plot_relevance_source.png", height = 5, width = 8)
+
+```
+
+
+
+## Data Format
+
+```{r}
+
+dataset1 <- dataset[dataset$dataset_location != "no",]
+dataset1 <- dataset[dataset$dataset_format != "",]
+
+plot_data.type_format(dataset1)
+
+ggsave("plots_semantic_scholar/formats_semschol.png",
+       height = 5,
+       width = 8)
+  
+
+```
+
+## 10. Source of information across time
+
+
+```{r}
+
+dataset <- read.csv("../data/outdated/091222_Merged_datasets.csv", header = TRUE,sep=",")
+
+dataset <- dataset[which(dataset$title != ""),]
+dataset <- dataset %>% dplyr::filter(valid_yn == "yes")
+
+dataset_st <- dataset[which(dataset$dataset_relevance != c("No dataset", "cant access", "X", "")),]
+
+dataset_st <- dataset[dataset$dataset_relevance != "No dataset",]
+dataset_st <- dataset_st[dataset_st$dataset_relevance != "cant access",]
+dataset_st <- dataset_st[dataset_st$dataset_relevance != "X",]
+dataset_st <- dataset_st[dataset_st$dataset_relevance != "",]
+
+dataset_st$dataset_relevance
+
+df.source_time <- df_source_time(df = dataset_st)
+
+```
+
+
+
+
+
+```{r}
+df_plot_source_time <- as.data.frame(table(df.source_time$year,df.source_time$source ))
+
+colnames(df_plot_source_time) <- c("year", "source", "N")
+
+df_plot_source_time$N <- as.numeric(df_plot_source_time$N)
+
+
+plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = source, color = source)) +
+  geom_line(size = 1.2, alpha = 0.8)+
+    theme_bw()+
+  my.theme+
+  theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
+  ylab("N retrieved datasets") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+plot_source_time
+
+
+ggsave("plots_semantic_scholar/plot_source_time.png", height = 5, width = 10)
+
+```
+
+
+
+
+
+# location - dataset type
+
+
+We evaluate the feasibility to automatically retrieve the information on the dataset type by looking at whether authors make explicit the type of dataset in either the title or abstract.
+
+Type of dataset should fall in one of the following categories or synonyms:
+
+```{r}
+df_dataset_types <- read.csv("../data/dataset_types.csv", sep = ";")
+df_dataset_types
+```
+
+I will add the following synonyms:
+
+presence-absence: detection, capture
+
+EBV genetic analyses: 16S, 18S, genetic data, microsatelites, barcodes(?), haplotypes, eDNA, SNPs
+
+
+```{r}
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("presence-absence", "detection", "synonym")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("presence-absence", "capture", "synonym")
+
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "16S", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "18S", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "barcodes", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "haplotypes", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "eDNA", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "SNPs", "methods")
+
+df_dataset_types
+```
+
+### FOR REPOSITORIES ONLY
+
+Detecting the words in title or abstract
+
+
+
+```{r}
+
+
+
+url <- c()
+dataset_type <- c()
+keyword_abs <- list()
+keyword_title <- list()
+#keyword_type <- c()
+in_title <- c()
+in_abstract <- c()
+
+
+
+for (i in 1:nrow(dataset_repos)) {
+  
+  
+  
+  dataset_type[i] <- dataset_repos[i, "data_type"]
+  url[i] <- dataset_repos[i, "url"]
+  
+  
+  
+  
+  # search on the abstract and note the list of keywords that match the dataset types
+
+  keyword_abs[[i]] <- unique(get_keywords(input_string = dataset_repos$full_text[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) == 0){
+    
+    in_abstract[i] <- "no"
+    
+  } else if (length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) > 0){
+    
+    in_abstract[i] <- "yes"
+    
+  }
+  
+  
+  
+
+  # search on the title and note the list of keywords that match the dataset types
+
+  keyword_title[[i]] <- unique(get_keywords(input_string = dataset_repos$title[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_title[i][!sapply(keyword_title[i], is.null)]) == 0){
+    
+    in_title[i] <- "no"
+    
+  } else if (length(keyword_title[i][!sapply(keyword_title[i], is.null)]) > 0){
+    
+    in_title[i] <- "yes"
+    
+  } 
+  
+  
+  
+}
+
+
+
+```
+
+
+
+For some reason, keyword_title has 3 less entries that keyword_abstract, and I can't figure out why. So for now I cant obtain the list of words that appear in the title.
+
+
+```{r}
+
+print(paste(length(which(in_abstract == "yes")), 
+            "with dataset type or synonym explicit in the abstract, out of", length(in_abstract)))
+
+print(paste("so", 
+      round(length(which(in_abstract == "yes"))/length(in_abstract)*100, 1),
+"%"))
+
+
+
+```
+
+```{r}
+
+print(paste(length(which(in_title == "yes")), 
+            "with dataset type or synonym explicit in the title, out of", length(in_title)))
+
+print(paste("so", 
+      round(length(which(in_title == "yes"))/length(in_title)*100, 1),
+"%"))
+
+```
+
+
+
+### Repeat for SEMANTIC SCHOLAR only
+
+
+
+
+
+Detecting the words in title or abstract
+
+
+
+```{r}
+
+
+
+
+
+url <- c()
+dataset_type <- c()
+keyword_abs <- list()
+keyword_title <- list()
+#keyword_type <- c()
+in_title <- c()
+in_abstract <- c()
+
+
+
+for (i in 1:nrow(dataset)) {
+  
+  
+  
+  dataset_type[i] <- dataset[i, "data_type"]
+  url[i] <- dataset[i, "url"]
+  
+  
+  
+  
+  # search on the abstract and note the list of keywords that match the dataset types
+
+  keyword_abs[[i]] <- unique(get_keywords(input_string = dataset$description[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) == 0){
+    
+    in_abstract[i] <- "no"
+    
+  } else if (length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) > 0){
+    
+    in_abstract[i] <- "yes"
+    
+  }
+  
+  
+  
+
+  # search on the title and note the list of keywords that match the dataset types
+
+  keyword_title[[i]] <- unique(get_keywords(input_string = dataset$title[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_title[i][!sapply(keyword_title[i], is.null)]) == 0){
+    
+    in_title[i] <- "no"
+    
+  } else if (length(keyword_title[i][!sapply(keyword_title[i], is.null)]) > 0){
+    
+    in_title[i] <- "yes"
+    
+  } 
+  
+  
+  
+}
+
+
+
+```
+
+
+
+For some reason, keyword_title has 3 less entries that keyword_abstract, and I can't figure out why. So for now I cant obtain the list of words that appear in the title.
+
+
+```{r}
+
+print(paste(length(which(in_abstract == "yes")), 
+            "with dataset type or synonym explicit in the abstract, out of", length(in_abstract)))
+
+print(paste("so", 
+      round(length(which(in_abstract == "yes"))/length(in_abstract)*100, 1),
+"%"))
+
+
+
+```
+
+```{r}
+print(paste(length(which(in_title == "yes")), 
+            "with dataset type or synonym explicit in the title, out of", length(in_title)))
+
+print(paste("so", 
+      round(length(which(in_title == "yes"))/length(in_title)*100, 1),
+"%"))
+```
+
+
+
+
+
+

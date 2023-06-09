@@ -30,7 +30,7 @@ count_relevance_by_source <- function(df) {
   
   rownames(df_relevance_source1) <- NULL
   
-  df_relevance_source1$relevance <- factor(df_relevance_source1$relevance, levels = c("H", "M", "L", " X", "No dataset", "cant access"))
+  df_relevance_source1$relevance <- factor(df_relevance_source1$relevance, levels = c("H", "M", "L", "X", "No dataset", "cant access"))
   
   df_relevance_source2 <- df_relevance_source1[order(df_relevance_source1$relevance), ]
   
@@ -293,68 +293,48 @@ plot_queries_index <- function(df) {
 
 calculate_z.score_queries <- function(df) {
   
-  
-  #split rows in function of character comas
-  
   dataset_q <- df %>%               
     separate_rows(id_query, sep=",") 
+  dataset_q <- merge(dataset_q, convert_query, by.all="id_query")
   
+  length(dataset_q$id_query == "species")
   
-  dataset_q$id_query  <- as.factor(dataset_q$id_query)
-  
-  
-  ## Eliminate  "No dataset", "cant access", and "NA"
-  
-  if("No dataset" %in% dataset_q$dataset_relevance){
-    
-    dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "No dataset"),]
-    
-  }
-  
-  if("cant access" %in% dataset_q$dataset_relevance){
-    
-    dataset_q <- dataset_q[-which(dataset_q$dataset_relevance == "cant access"),]
-    
-  }
-  
-
-  
-  dataset_q$relevance_binary <- dataset_q$dataset_relevance
-  
-  
-  ## Convert relevance into binary classification (Relevant/Unrelevant)
-  
+  dataset_q$query  <- factor(dataset_q$query,
+                             levels= c("species", 
+                                       "occurrence + species", 
+                                       "inventory + species", 
+                                       "collection + species",
+                                       "sampling + species",
+                                       "survey + species" ,
+                                       "population + species",
+                                       "sites + species",
+                                       "density + species",
+                                       "abundance + species" , 
+                                       "time series + species" ))
   
   dataset_q$relevance_binary  <- gsub('H', 'R',
                                       gsub('M', 'R',
                                            gsub('L', 'U',
-                                                gsub("X", "U", dataset_q$relevance_binary))))
+                                                gsub("X", "U", dataset_q$dataset_relevance))))
   
   
-  ## Calculate precision for each query
+  TP <- numeric(length(levels(dataset_q$query)))
+  FP <- numeric(length(levels(dataset_q$query)))
+  FN <- numeric(length(levels(dataset_q$query)))
   
-  queries <- levels(dataset_q$id_query)
   
   
-  
-  TP <- numeric(length(queries))
-  FP <- numeric(length(queries))
-  FN <- numeric(length(queries))
-  
-  queries <- as.numeric(queries)
-  
-  for (i in 1:length(queries)) {
+  for (i in 1:length(levels(dataset_q$query))) {
     
-    TP[i] <- length(which(dataset_q$id_query == queries[i] & 
+    TP[i] <- length(which(dataset_q$query == levels(dataset_q$query)[i] & 
                             dataset_q$relevance_binary == "R"))
     
-    FP[i] <- length(which(dataset_q$id_query == queries[i]))
+    FP[i] <- length(which(dataset_q$query == levels(dataset_q$query)[i]))
     
     FN[i] <- length(which(dataset_q$relevance_binary == "R" &
-                            dataset_q$id_query != queries[i]))
+                            dataset_q$query != levels(dataset_q$query)[i]))
     
   }
-  
   
   Precision = TP / (TP + FP)
   
@@ -362,7 +342,9 @@ calculate_z.score_queries <- function(df) {
   
   Fscore = 2 * (Precision * Recall) / (Precision + Recall)
   
-  df_scores <- data.frame(queries, Fscore,Precision, Recall)
+  query <- levels(dataset_q$query)
+  
+  df_scores <- data.frame(query, Fscore,Precision, Recall)
   
   df_scores <- df_scores[order(-Fscore),]
   
@@ -385,20 +367,20 @@ calculate_z.score_queries <- function(df) {
 # These are going to be those whose value is "no" in the dataset, which is converted
 # to NAs and then the NAs are counted
 
-count_not.reported_temporal.duration <- function(df) {
+#count_not.reported_temporal.duration <- function(df) {
   
-  dataset_temp_duration <- subset(df, 
-                                  temporal_duration_y > 0 | temporal_duration_y == "no",
-                                  select = c(temporal_duration_y,id_query))
+  #dataset_temp_duration <- subset(df, 
+                               #   temporal_duration_y > 0 | temporal_duration_position == "no",
+                                #  select = c(temporal_duration_y,id_query))
   
-  dataset_temp_duration$temporal_duration_y <- as.numeric(dataset_temp_duration$temporal_duration_y)
+ # dataset_temp_duration$temporal_duration_y <- as.numeric(dataset_temp_duration$temporal_duration_y)
   
   
-  nNa <- length(dataset_temp_duration[is.na(dataset_temp_duration)])
+ # nNa <- length(dataset_temp_duration[is.na(dataset_temp_duration)])
   
-  return(nNa)
+ # return(nNa)
   
-}
+#}
 
 
 # Obtain dataframe with counts of each duration
@@ -448,21 +430,22 @@ plot_duration_counts <- function(df, counts_Na) {
                                    size = 5, 
                                    add = "segment",
                                    xlab = "Temporal duration (years)",
-                                   ylab = "N articles",
+                                   ylab = "N datasets",
                                    sorting = "none",
                                    add.params = list(color = "lightgray", size = 1.3),
                                    position = position_dodge(0.45),
                                    ggtheme = theme_pubclean(),
-                                   title = "Temporal duration in retrieved datasets")+
-    geom_label(
-      label= paste(counts_Na, "not reported"), 
-      x=20,
-      y=max(df$counts)-2,
-      label.padding = unit(0.55, "lines"), # Rectangle size around label
-      label.size = 0.15,
-      color = "black",
-      fill="white"
-    )+
+                                   #title = "Temporal duration in retrieved datasets"
+                     )+
+   # geom_label(
+   #   label= paste(counts_Na, "not reported"), 
+   #   x=20,
+   #   y=max(df$counts)-2,
+   #  label.padding = unit(0.55, "lines"), # Rectangle size around label
+    #  label.size = 0.15,
+    #  color = "black",
+    #  fill="white"
+   # )+
     theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2))+
     my.theme
   
@@ -574,9 +557,10 @@ plot_spat.range_counts <- function(df) {
                               add.params = list(color = "lightgray", size = 1.3),
                               position = position_dodge(0.45),
                               ggtheme = theme_pubclean(),
-                              title = "Spatial range in retrieved datasets")+
+                              #title = "Spatial range in retrieved datasets"
+                     )+
     scale_x_discrete(labels = c("=< 5.000", "(5.000-15.0000]", "> 15.000"))+
-    theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2))+
+    theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
     my.theme
   
   return(plot)
@@ -624,7 +608,7 @@ plot_spat_temp_relevance <- function(df) {
   
   
   
-  
+  dataset_filt$dataset_relevance
   
   plot <- ggplot(na.omit(dataset_filt), 
                  aes(x = spatial_range_km2, y = temporal_duration_y))+
@@ -632,18 +616,21 @@ plot_spat_temp_relevance <- function(df) {
     ylab("duration (years)")+
     geom_boxplot()+
     geom_jitter(aes(colour = dataset_relevance),shape=16, position=position_jitter(0.2), size =4.5, alpha = 0.5) +
-    geom_label(
-      label= paste(no_spatial.range+no_temp.duration, "with no data:", no_spatial.range, "(spatial range),", no_temp.duration, "(temp. duration)"), 
-      x = "(5e+03,1e+04]",
-      y=max(na.omit(dataset_filt$temporal_duration_y)),
-      label.padding = unit(0.55, "lines"), # Rectangle size around label
-      label.size = 0.15,
-      color = "black",
-      fill="white"
-    )+
+    #geom_label(
+    #  label= paste(no_spatial.range+no_temp.duration, "with no data:", no_spatial.range, "(spatial range),", no_temp.duration, "(temp. duration)"), 
+     # x = "(5e+03,1e+04]",
+     # y=max(na.omit(dataset_filt$temporal_duration_y)),
+     # label.padding = unit(0.55, "lines"), # Rectangle size around label
+     # label.size = 0.15,
+     # color = "black",
+     # fill="white"
+   # )+
     scale_color_manual(values = c("red","dodgerblue","purple2"))+
+    labs(col = "Relevance")+
+
     theme_bw()+
-    my.theme
+    my.theme+
+    theme(legend.position = "top")
 
   
   return(plot)
@@ -733,6 +720,11 @@ compute_df_data.type <- function(df) {
 
 plot_data.type_counts <- function(df) {
   
+  df <- df[order(-df$N_articles),]
+  
+  
+  df<- df[df$data_type_col != "genetic_analyses",]
+  
   plot <- ggdotchart(df, x = "data_type_col", y = "N_articles",
                                size = 5, 
                                add = "segment",
@@ -742,10 +734,18 @@ plot_data.type_counts <- function(df) {
                                add.params = list(color = "lightgray", size = 1.3),
                                position = position_dodge(0.45),
                                ggtheme = theme_pubclean(),
-                               title = "Data type in retrieved datasets")+
+                               #title = "Data type in retrieved datasets"
+                     )+
     theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2))+
-    scale_x_discrete(guide = guide_axis(n.dodge=2))+
+    scale_x_discrete(guide = guide_axis(n.dodge=2),labels=c("presence.only" = "presence only",
+                              "EBV_genetic" = "EBV genetic",
+                              "abundance" = "abundance",
+                              "other" = "other",
+                              "presence.absence" = "presence-absence",
+                              "distribution" = "distribution"))+
+    theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
     my.theme
+
   
   plot
   
@@ -1049,9 +1049,9 @@ df_source_time <- function(df) {
   
   dataset_l <- df[,c("publication_date", "source")]
   
-  dataset_l <- dataset_l[-is.na(dataset_l),]
+  #dataset_l <- dataset_l[-is.na(dataset_l),]
   
-  dataset_l <- dataset_l[-which(is.na(dataset_l$publication_date)),]
+  #dataset_l <- dataset_l[-which(is.na(dataset_l$publication_date)),]
   
   dataset_l <- dataset_l[-which((dataset_l$publication_date) == ""),]
   
