@@ -101,8 +101,9 @@ dataset_repos_semantic <- dataset_repos_semantic %>% dplyr::filter(valid_yn == "
 
 df_rel_source <- count_relevance_by_source(df = dataset_repos_semantic)
 
-df_rel_source
+df_rel_source$repositories <- df_rel_source$dryad + df_rel_source$zenodo
 
+df_rel_source
 
 ```
 
@@ -115,10 +116,11 @@ colnames(df_rel_source_melt) <- c("relevance", "source", "value")
 
 plot_relevance_source <- ggplot(df_rel_source_melt, 
                                           aes(x=relevance, y=value, group = source, 
-                                              color = source)) +
+                                              color = source,
+                                              alpha=source)) +
   scale_x_discrete(limits = rev(levels(df_rel_source_melt$relevance)))+
     geom_segment( aes(x=relevance ,xend=relevance, y=0, yend=max(value)), color="grey") +
-    geom_point(size=5, alpha = 0.8, shape = 15) +
+    geom_point(aes(shape = source),size = 5) + #alpha = 0.8, 
     coord_flip() +
     # theme_ipsum() +
     theme(
@@ -126,12 +128,13 @@ plot_relevance_source <- ggplot(df_rel_source_melt,
       panel.grid.major.y = element_blank(),
       legend.position="top"
     ) +
-    xlab("Relevance")+
-    ylab("Datasets counts") +
-    #scale_color_manual(values = c("gray60", "red","purple2", "dodgerblue", "black", "black"))+
-   # scale_shape_manual(values = c(15, 19, 19, 19, 1,13))+
+    xlab("relevance")+
+    ylab("dataset counts") +
+    scale_color_manual(values = c("#F8766D", "#00BA38","#619CFF", "grey40"))+
+   scale_shape_manual(values = c(15, 15, 15, 15))+
     my.theme+
-  labs(color = "source")
+  labs(color = "source")+
+   scale_alpha_manual(values=c(0.8, 0.8, 0.8,0.5))
 
 
 plot_relevance_source

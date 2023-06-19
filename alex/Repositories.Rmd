@@ -89,50 +89,6 @@ df_N_relevance
 
 ### 2.1. N publications and relevance categories per query
 
-#### Grouped queries
-
-```{r}
-
-dataset$id_query <- as.factor(dataset$id_query)
-df_queries_counts <- compute_df_n_relevance_queries(data = dataset)
-
-df_queries_counts
-```
-
-Plot the results:
-```{r}
-df_queries_counts_all <- dataset %>% 
-  group_by(dataset_relevance, id_query) %>% 
-  summarise(n = n()) 
-
-df_queries_counts_all <- df_queries_counts_all %>% dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% mutate(dataset_relevance = factor(dataset_relevance))
-
-plot_group.queries_relevance  <- ggplot(df_queries_counts_all, 
-                                          aes(x=id_query, y=n, group = dataset_relevance, 
-                                              color = dataset_relevance,shape=dataset_relevance )) +
-  geom_segment( aes(x=id_query ,xend=id_query, y=0, yend=max(n)), color="grey") +
-    geom_point(size=4, alpha = 0.8) +
-    coord_flip() +
-    # theme_ipsum() +
-    theme(
-      panel.grid.minor.y = element_blank(),
-      panel.grid.major.y = element_blank(),
-      legend.position="top"
-    ) +
-    xlab("Query ID")+
-    ylab("publications counts") +
-    scale_color_manual(values = c( "red","purple2", "dodgerblue", "black"))+
-    scale_shape_manual(values = c(19, 19, 19, 1))+
-    my.theme
-
-plot_group.queries_relevance 
-#ggsave("plots_repo/plot_group.queries_relevance_all.png", height = 7, width = 12)
-```
-
--   Query 4 delivers the highest number of relevant datasets (highest number of High, Moderate and Low relevance datasets), but also retrieves by far the higher amount of publication.
-
--   Some queries do not add any relevant publication (e.g. "0,6,5,7" or "7,2,9").
-
 
 #### Individual queries
 
@@ -319,8 +275,14 @@ dataset_q
 
 df_zscores_queries <- calculate_z.score_queries(df = dataset)
 
+df_zscores_queries$Fscore <- round(df_zscores_queries$Fscore, 2)
+df_zscores_queries$Precision <- round(df_zscores_queries$Precision, 2)
+df_zscores_queries$Recall <- round(df_zscores_queries$Recall, 2)
+
+
 df_zscores_queries
 
+write.table(df_zscores_queries, file = "df_zscores_queries.txt", sep = ",", quote = FALSE, row.names = F)
 
 ```
 
@@ -373,7 +335,7 @@ ggsave("plots_repo/combined_plot_queries.png",
 
 
 
-dataset_temp_range <- dataset[,c("url", "temp_range_i", "temp_range_f")]
+dataset_temp_range <- dataset[,c("url", "temp_range_i", "temp_range_f", "time_series")]
 
 dataset_temp_range <- dataset_temp_range[-which(is.na(dataset_temp_range$temp_range_i)),]
 
@@ -390,16 +352,33 @@ dataset_temp_range <- dataset_temp_range[-which(dataset_temp_range$temp_range_i 
 
 dataset_temp_range[which(dataset_temp_range$temp_range_i == dataset_temp_range$temp_range_f),"temp_range_f"] <- dataset_temp_range[which(dataset_temp_range$temp_range_i == dataset_temp_range$temp_range_f),"temp_range_f"]+0.5
 
-ggplot(dataset_temp_range, aes(y=url)) +
+dataset_temp_range$temp_range_i[which(dataset_temp_range$temp_range_i < 1930)] <- 1930
+
+p_temp_range <- ggplot(dataset_temp_range, aes(y=url, color = time_series)) +
   geom_segment(aes(x=temp_range_i, xend=temp_range_f, y=url, yend=url), size=3)+
-  xlab("temporal range (year)") +
+  xlab("year") +
   ylab ("datasets")+
   theme_bw() +
   my.theme +
-  theme(axis.text.y=element_blank())
+  theme(axis.text.y=element_blank())+
+  scale_color_manual(values = c("gray37", "#F8766D"))+
+  theme(legend.position = "none") +
+  xlim(1930, round(max(dataset_temp_range$temp_range_f),0))+
+  geom_label(
+    label="1875", 
+    x=1930,
+    y=5,
+    #label.padding = unit(0.2, "lines"), # Rectangle size around label
+    label.size = 0.1,
+    color = "black"
+   # fill="white"
+  )
+
+p_temp_range
 
 
-ggsave("plots_repo/temporal_range.png", height = 6, width = 10)
+
+#ggsave("plots_repo/temporal_range.png", height = 7, width = 7)
 
 ```
 
@@ -492,55 +471,7 @@ plot_spatial_range_counts <- plot_spat.range_counts(dataset)
 
 #ggsave("plots_repo/plot_spatial_range_counts.png", height = 6, width = 6)
 
-plot_spat.range_counts <- function(df) {
-  
-  dataset1 <- df[df$dataset_relevance != "cant access",]
-  
-  dataset1$dataset_relevance <- as.factor(dataset1$dataset_relevance)
-  
-  spatial_range_km2_vec <- dataset1$spatial_range_km2[dataset1$spatial_range_km2 != ""]
-  
-  spatial_range_km2_vec <- spatial_range_km2_vec[!is.na(spatial_range_km2_vec)]
-  
-  spatial_range_km2_vec <- as.numeric(spatial_range_km2_vec) 
-  
 
-  
-  
-  cuts_range_km2_vec <- cut(spatial_range_km2_vec, breaks = c(0,5000, 15000, 
-                                                              max(spatial_range_km2_vec, na.rm = TRUE)), 
-                            include.lowest = TRUE)
-  
-  df_cuts_range_km2_vec <- as.data.frame(table(cuts_range_km2_vec))
-  
-  #By default, the argument right is set to TRUE, so the intervals are opened on the left and closed on the right (x, y].
-  
-  df_cuts_range_km2_vec$Freq <- as.numeric(df_cuts_range_km2_vec$Freq)
-  
-  ######################################################################
-  
-  colnames(df_cuts_range_km2_vec) = c("ranges", "counts")
-  
-  df_cuts_range_km2_vec$ranges <- as.factor(df_cuts_range_km2_vec$ranges)
-  
-  plot <- ggdotchart(df_cuts_range_km2_vec, x = "ranges", y = "counts",
-                              size = 5, 
-                              add = "segment",
-                              xlab = "Spatial range (km2)",
-                              ylab = "N articles",
-                              sorting = "none",
-                              add.params = list(color = "lightgray", size = 1.3),
-                              position = position_dodge(0.45),
-                              ggtheme = theme_pubclean(),
-                              title = "Spatial range in retrieved datasets")+
-    scale_x_discrete(labels = c("=< 5.000", "(5.000-15.0000]", "> 15.000"))+
-    theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
-    my.theme
-  
-  return(plot)
-  
-  
-}
 
 ```
 
@@ -605,20 +536,43 @@ plot_data_type
 
 ### Combine plots
 
+V1
+
 ```{r}
 
-plot_combined_corpus <- ggarrange(plot_spatial_temporal_relevance,
-plot_data_type,
+plot_combined_corpus <- ggarrange(
 plot_temp_duration,
 plot_spatial_range_counts,
+plot_spatial_temporal_relevance,
+plot_data_type,
 nrow = 2,
-ncol = 2)
+ncol = 2,
+  labels = c("A", "B", "C","D"),
+heights = c(1,1.22))
 
 plot_combined_corpus
 
-ggsave("plots_repo/plot_combined_corpus.png", height = 16, width = 16)
+ggsave("plots_repo/plot_combined_corpus.png", height = 10, width = 12)
 ```
 
+V2
+
+```{r}
+
+plot_combined_corpus.v2 <- ggarrange(
+p_temp_range,
+plot_spatial_range_counts,
+plot_spatial_temporal_relevance,
+plot_data_type,
+nrow = 2,
+ncol = 2,
+  labels = c("A", "B", "C","D"),
+heights = c(1,1.22))
+
+plot_combined_corpus.v2
+
+ggsave("plots_repo/plot_combined_corpus.v2.png", height = 10, width = 12)
+```
 
 ## 7. Data format
 
@@ -771,14 +725,131 @@ ggplot(df_positions, aes(x=position, y = Freq, group = feature, color = feature)
     coord_flip() +
   theme_bw() +
   my.theme+
-  scale_color_manual(values = c("royalblue3","firebrick1","firebrick4"))+
+  scale_color_manual(values = c("deepskyblue2","firebrick1","indianred4"))+
   scale_shape_manual(values = c(11,2,3))+
   ylab("publication counts")
 
   
-ggsave("plots_repo/location_spat.temp.features_repos.png", height = 5, width = 10)
+ggsave("plots_repo/location_spat.temp.features_repos.png", height = 5, width = 9)
 
 
 ```
 
 
+
+## Spatial information format
+
+
+```{r}
+
+dataset_repos$geospatial_info_article_text
+dataset_repos$geospatial_info_dataset
+dataset_repos$geospatial_info_repo_page_text
+
+
+
+
+
+geospatial_info_article_text <- dataset_repos$geospatial_info_article_text[-which(is.na(dataset_repos$geospatial_info_article_text))]
+
+geospatial_info_dataset <- dataset_repos$geospatial_info_dataset[-which(is.na(dataset_repos$geospatial_info_dataset))]
+
+geospatial_info_repo_page_text <- dataset_repos$geospatial_info_repo_page_text[-which(is.na(dataset_repos$geospatial_info_repo_page_text))]
+
+
+
+
+
+
+geospatial_info_article_text  <- unlist(strsplit(geospatial_info_article_text,","))
+
+geospatial_info_dataset  <- unlist(strsplit(geospatial_info_dataset,","))
+
+geospatial_info_repo_page_text  <- unlist(strsplit(geospatial_info_repo_page_text,","))
+
+
+geospatial_info_article_text[which(geospatial_info_article_text == " administrative unit")] <- "administrative unit"
+geospatial_info_article_text[which(geospatial_info_article_text == " range coordites")] <- "range coordinates"
+geospatial_info_article_text[which(geospatial_info_article_text == " site coordites")] <- "site coordinates"
+geospatial_info_article_text[which(geospatial_info_article_text == "site coordites")] <- "site coordinates"
+geospatial_info_article_text[which(geospatial_info_article_text == " geological feature me")] <- "geographic feature"
+geospatial_info_article_text[which(geospatial_info_article_text == "geological feature me")] <- "geographic feature"
+geospatial_info_article_text[which(geospatial_info_article_text == " Map")] <- "Map"
+geospatial_info_article_text[which(geospatial_info_article_text == "Map")] <- "map"
+geospatial_info_article_text[which(geospatial_info_article_text == "administration unit")] <- "administrative unit"
+geospatial_info_article_text[which(geospatial_info_article_text == "Administrative unit")] <- "administrative unit"
+geospatial_info_article_text[which(geospatial_info_article_text == "no")] <- "not given"
+
+
+geospatial_info_dataset[which(geospatial_info_dataset == " site coordites")] <- "site coordinates"
+geospatial_info_dataset[which(geospatial_info_dataset == "  site coordites")] <- "site coordinates"
+geospatial_info_dataset[which(geospatial_info_dataset == "site coordites")] <- "site coordinates"
+geospatial_info_dataset[which(geospatial_info_dataset == "sample coordites")] <- "sample coordinates"
+geospatial_info_dataset[which(geospatial_info_dataset == " sample coordites")] <- "sample coordinates"
+geospatial_info_dataset[which(geospatial_info_dataset == " administrative unit")] <- "administrative unit"
+geospatial_info_dataset[which(geospatial_info_dataset == " site IDs")] <- "site IDs"
+geospatial_info_dataset[which(geospatial_info_dataset == " IDs")] <- "site IDs"
+geospatial_info_dataset[which(geospatial_info_dataset == " geographic feature")] <- "geographic feature"
+geospatial_info_dataset[which(geospatial_info_dataset == "no")] <- "not given"
+
+
+geospatial_info_repo_page_text[which(geospatial_info_repo_page_text == "geological feature me")] <- "geographic feature"
+geospatial_info_repo_page_text[which(geospatial_info_repo_page_text == "Administrative unit")] <- "administrative unit"
+geospatial_info_repo_page_text[which(geospatial_info_repo_page_text == "no")] <- "not given"
+
+```
+
+
+```{r}
+
+location <- rep("article text", times = length(geospatial_info_article_text))
+
+df_article <- data.frame(geospatial_info_article_text, location)
+
+location <- rep("repository page", times = length(geospatial_info_repo_page_text))
+
+df_repo<- data.frame(geospatial_info_repo_page_text, location)
+
+location <- rep("dataset", times = length(geospatial_info_dataset))
+
+df_dataset <- data.frame(geospatial_info_dataset, location)
+
+colnames(df_article) <- c("information", "location")
+colnames(df_repo) <- c("information", "location")
+colnames(df_dataset) <- c("information", "location")
+
+df_locations <- rbind(df_article,df_repo,df_dataset)
+
+df_locations$information[which(df_locations$information == "site IDs") ] <- "sites IDs"
+df_locations$information[which(df_locations$information == "site coordites") ] <- "site coordinates"
+df_locations$information[which(df_locations$information == "Map") ] <- "map"
+df_locations$information[which(df_locations$information == "geologial feature") ] <- "geographic feature"
+df_locations$information[which(df_locations$information == "geographical feature") ] <- "geographic feature"
+
+```
+
+
+```{r}
+
+df_locations <- as.data.frame(table(df_locations))
+
+
+df_locations$location <- factor(df_locations$location, levels=c("article text", "repository page", "dataset"))
+
+
+
+ggplot(df_locations, aes(x=information, y = Freq, group = location, color = location)) +
+   geom_segment( aes(x=information ,xend=information, y=0, yend=max(Freq)), color="grey") +
+    geom_point(size=4, alpha = 0.5) +
+    coord_flip() +
+  theme_bw() +
+  my.theme+
+ scale_color_manual(values = c("blue4","red1","green4"))+
+ # scale_shape_manual(values = c(11,2,3))+
+  ylab("publication counts")
+
+  
+ggsave("plots_repo/location_type_geoinfo.png", height = 5, width = 9)
+
+
+```

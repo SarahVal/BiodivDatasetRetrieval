@@ -1,0 +1,12 @@
+query,Fscore,Precision,Recall
+species,0.33,0.33,0.32
+population + species,0.23,0.33,0.18
+sites + species,0.17,0.31,0.12
+occurrence + species,0.15,0.44,0.09
+sampling + species,0.14,0.36,0.09
+abundance + species,0.14,0.34,0.09
+survey + species,0.09,0.35,0.05
+collection + species,0.06,0.31,0.03
+density + species,0.04,0.3,0.02
+inventory + species,0.02,0.22,0.01
+time series + species,0.01,0.25,0.01
