@@ -43,9 +43,19 @@ my.theme<-theme(axis.text=element_text(size=15),
 ```{r}
 
 dataset <- read_excel("df_repository.xlsx")
+
+```
+
+Count Valid/non-valid datasets:
+
+```{r}
+
 table(dataset$valid_yn)
 
 ```
+
+
+count reasons for non-valid assignment:
 
 
 ```{r}
@@ -64,6 +74,7 @@ dataset$dataset_relevance <- as.factor(dataset$dataset_relevance)
 dataset <- dataset[dataset$source != "semantic_scholar",]
 dataset$id_query  <- stringr::str_trim(dataset$id_query )
 dataset$dataset_relevance  <- str_trim(dataset$dataset_relevance )
+
 head(dataset)
 ```
 
@@ -82,15 +93,10 @@ df_N_relevance
 
 
 
-
-
-
 ## 2. Queries performance
 
 ### 2.1. N publications and relevance categories per query
 
-
-#### Individual queries
 
 ```{r}
 
@@ -118,29 +124,37 @@ convert_query = data.frame("id_query" = as.character(seq(0,10)), "query" = c(
 
 dataset_q <- dataset %>%               
   separate_rows(id_query, sep=",") 
+
+
 dataset_q <- merge(dataset_q, convert_query, by.all="id_query")
 
-length(dataset_q$id_query == "species")
 
 dataset_q$query  <- factor(dataset_q$query,
-                              levels= c("species", "occurrence + species", "inventory + species", "collection + species", "sampling + species", "survey + species" , "population + species", "sites + species", "density + species", "abundance + species" , "time series + species" ))
+                           levels= c("species", "occurrence + species",
+                                     "inventory + species", "collection + species",
+                                     "sampling + species", "survey + species" , 
+                                     "population + species", "sites + species", 
+                                     "density + species", "abundance + species",
+                                     "time series + species" ))
 
 
-
-
-
-```
-
-
-
-
-```{r}
 df_queries_counts_ind <- dataset_q %>% 
   group_by(dataset_relevance, query) %>% 
   summarise(n = n()) 
 
-df_queries_counts_ind <- df_queries_counts_ind %>% dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% mutate(dataset_relevance = factor(dataset_relevance))
+df_queries_counts_ind <- df_queries_counts_ind %>% 
+  dplyr::filter(dataset_relevance %in% c("X", "L", "M", "H")) %>% 
+  mutate(dataset_relevance = factor(dataset_relevance))
 
+
+df_queries_counts_ind
+
+```
+
+
+Plot the results:
+
+```{r}
 
 
 plot_queries_relevance_counts <- ggplot(df_queries_counts_ind, 
@@ -163,87 +177,20 @@ plot_queries_relevance_counts <- ggplot(df_queries_counts_ind,
                        values = c(19, 19, 19, 1))+
     my.theme
 
-plot_queries_relevance_counts
 
-ggsave("plots_repo/plot_queries_raw.png", height = 5, width = 9)
-
-```
-
-
-### 2.2 Classify queries by their relevance (index)
-
-Puctuations for the relevance categories:
-
--   High = 5
--   Mod = 2
--   Low = 0.5
--   non_relevant = 0
-
-*Index 1*: is the result of summing the puntuations assigned to each relevance category
-
-Index 1 = sum punctuations = (N High \* 5) + (N Mod \* 2) + (N Low \* 0.5)
-
-*Index 2*: is the Index1 but accounting for the total number of publications retrieved by the query.
-
-Index 2 = sum punctuations / n publications retrieved
-
-
-#### Grouped queries
-
-```{r}
-
-df_queries_counts_index <- compute_index12(df_counts = df_queries_counts, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
-
-df_queries_counts_index
+#ggsave("plots_repo/plot_queries_raw.png", height = 5, width = 9)
 
 ```
 
-Queries 3, 4, 0, and 6 are the top 4 index1 values. Queries 3 and 4 have far higher index than the rest.
-
-Plot the results:
-
-```{r}
-
-plot_group.queries_index12 <- plot_queries_index(df = df_queries_counts_index)
-
-plot_group.queries_index12
-
-#ggsave("plots_repo/plot_group.queries_index12.png", height = 5, width = 11)
-```
-
--   Index 1 shows that queries "3" and "4" offer the higher perfomance, followed by "6" and "5".
-
--   Index 2 shows that querie "6,7,5" offer the highest performance, followed by "7,8", "6,7", and "5,6,7,8,9"
 
 
-#### individual queries
+### 2.2. F SCORE
 
-```{r}
-df_queries_counts_index_ind <- compute_index12(df_counts = df_queries_counts_ind, order_based_index = "2") # "1" for ordering according to index 1, "2" for index 2
+- F SCORE = 2* precision * recall / precision + recall
 
-df_queries_counts_index_ind
-```
+- PRECISION = TP / TP + FP
 
-
-Plot the results
-
-```{r}
-plot_queries_index12_ind <- plot_queries_index(df = df_queries_counts_index_ind)
-
-plot_queries_index12_ind
-
-#ggsave("plots_repo/plot_ind.queries_index12.png", height = 5, width = 11)
-```
-
-
-
-### 2.3. F SCORE
-
-Precision
-Recall
-
-Binary view: M,H relevant | L,X unrevelant
-
+- RECALL = TP / TP + FN
 
 N relevant datasets -> True Positives (TP)
 
@@ -251,22 +198,8 @@ N unrelevant datasets -> False Positives (FP)
 
 Sum of all relevant publications of the dataset that are not detected = FN
 
-PRECISION = TP / TP + FP
 
-RECALL = TP / TP + FN
-
-
-F SCORE = 2* precision * recall / precision + recall
-
-
-
-Split grouped queries into individual ones
-
-
-```{r}
-dataset_q
-```
-
+- Binary view: M,H relevant | L,X unrevelant
 
 
 
@@ -282,11 +215,11 @@ df_zscores_queries$Recall <- round(df_zscores_queries$Recall, 2)
 
 df_zscores_queries
 
-write.table(df_zscores_queries, file = "df_zscores_queries.txt", sep = ",", quote = FALSE, row.names = F)
+#write.table(df_zscores_queries, file = "df_zscores_queries.txt", sep = ",", quote = FALSE, row.names = F)
 
 ```
 
-Plot results
+Plot results:
 
 ```{r}
 
@@ -301,8 +234,6 @@ plot_queries_scores <- ggplot(df_zscores_queries, aes(x = Precision, y = Recall,
   theme_bw()+
   my.theme
 
-plot_queries_scores
-
 #ggsave("plots_repo/plot_queries_scores.png", height = 7, width = 7)
 
 ```
@@ -314,9 +245,9 @@ combined_plot_queries <- ggarrange(plot_queries_relevance_counts,
                                    nrow = 1,
                                    ncol = 2)
 
-ggsave("plots_repo/combined_plot_queries.png",
-       height = 6,
-       width = 13)
+combined_plot_queries
+
+#ggsave("plots_repo/combined_plot_queries.png",height = 6,width = 13)
 
 ```
 
@@ -324,38 +255,60 @@ ggsave("plots_repo/combined_plot_queries.png",
 
 ## 3. Temporal range and duration
 
+Discard datasets with negligible relevance for all the analyses from here - IMPORTANT TO NOTE - now the dataset size is n = 92 (discarting 16 negligible)
 
-## Datasets temporal range
+```{r}
+dataset <- dataset[dataset$dataset_relevance != "X",]
+```
 
+
+
+### Temporal range
 
 
 
 
 ```{r}
 
-
+# Select variables of interest
 
 dataset_temp_range <- dataset[,c("url", "temp_range_i", "temp_range_f", "time_series")]
+
+# Eliminate Nas
 
 dataset_temp_range <- dataset_temp_range[-which(is.na(dataset_temp_range$temp_range_i)),]
 
 dataset_temp_range <- as.data.frame((dataset_temp_range))
 
-#dataset_temp_range <- melt(dataset_temp_range, measure.vars = c("temp_range_i", "temp_range_f"))
-
-#dataset_temp_range <- melt(dataset_temp_range, id ="url")
-
 dataset_temp_range$temp_range_i <- as.numeric(dataset_temp_range$temp_range_i)
 dataset_temp_range$temp_range_f <- as.numeric(dataset_temp_range$temp_range_f)
+
+print(paste(nrow(dataset_temp_range), "with temporal range data"))
+
+
+# Eliminate outlier
 
 dataset_temp_range <- dataset_temp_range[-which(dataset_temp_range$temp_range_i == -20000),]
 
 dataset_temp_range[which(dataset_temp_range$temp_range_i == dataset_temp_range$temp_range_f),"temp_range_f"] <- dataset_temp_range[which(dataset_temp_range$temp_range_i == dataset_temp_range$temp_range_f),"temp_range_f"]+0.5
 
+# cut lower limit range for outlier
+
 dataset_temp_range$temp_range_i[which(dataset_temp_range$temp_range_i < 1930)] <- 1930
 
+
+
+
+
+
+```
+
+Plot the results:
+
+```{r}
+
 p_temp_range <- ggplot(dataset_temp_range, aes(y=url, color = time_series)) +
-  geom_segment(aes(x=temp_range_i, xend=temp_range_f, y=url, yend=url), size=3)+
+  geom_segment(aes(x=temp_range_i, xend=temp_range_f, y=url, yend=url), linewidth=3)+
   xlab("year") +
   ylab ("datasets")+
   theme_bw() +
@@ -374,19 +327,11 @@ p_temp_range <- ggplot(dataset_temp_range, aes(y=url, color = time_series)) +
    # fill="white"
   )
 
-p_temp_range
-
-
-
 #ggsave("plots_repo/temporal_range.png", height = 7, width = 7)
 
 ```
 
-```{r}
-min(dataset_temp_range$temp_range_i)
 
-dataset_temp_range[dataset_temp_range$temp_range_i == 1875,]
-```
 
 
 ### 3.1 Temporal duration counts
@@ -394,7 +339,6 @@ dataset_temp_range[dataset_temp_range$temp_range_i == 1875,]
 How many publications without temporal duration data?
 
 ```{r}
-
 
 #nNa <- count_not.reported_temporal.duration(dataset)
 
@@ -421,7 +365,7 @@ plot_temp_duration <- plot_duration_counts(df = df_duration_counts,
 
 plot_temp_duration
 
-ggsave("plots_repo/plot_temp_duration.png", height = 5, width = 9)
+#ggsave("plots_repo/plot_temp_duration.png", height = 5, width = 9)
 
 ```
 
@@ -443,15 +387,13 @@ print(paste("mean of",
 
 
 
-## 4. Spatial range
+### 4. Spatial range
 
-### 4.1 count spatial range publications
+#### 4.1 count spatial range publications
 
-WARNING: publications that cant be accessed are not counted
+Publications that cant be accessed are not counted.
 
 How many publications without spatial range data?
-
-
 
 
 ```{r}
@@ -462,20 +404,7 @@ print(paste(n_not_reported, "publications without spatial range data"))
 
 ```
 
-Spatial ranges are divided according to the thresholds established to determine a low, moredate and high spatial range: \<5000, 500-15000, \>15000
-
-```{r}
-
-plot_spatial_range_counts <- plot_spat.range_counts(dataset)
-
-
-#ggsave("plots_repo/plot_spatial_range_counts.png", height = 6, width = 6)
-
-
-
-```
-
-Average spatial range (for those with data):
+Average spatial range:
 
 ```{r}
 
@@ -495,14 +424,29 @@ print(paste("mean of",
             "km2"))
 ```
 
+
+
+Plot the results:
+Spatial ranges are divided according to the thresholds established to determine a low, moredate and high spatial range: \<5000, 500-15000, \>15000
+
+```{r}
+
+plot_spatial_range_counts <- plot_spat.range_counts(dataset)
+
+
+#ggsave("plots_repo/plot_spatial_range_counts.png", height = 6, width = 6)
+
+```
+
+
+
 ## 5. Temporal duration, spatial range, relevance
+
 
 ```{r}
 
 plot_spatial_temporal_relevance <- plot_spat_temp_relevance(df = dataset)
 
-
-plot_spatial_temporal_relevance
 
 #ggsave("plots_repo/plot_spatial_temporal_relevance.png", height = 6, width = 9)
 
@@ -516,21 +460,15 @@ df_data_type_counts <- compute_df_data.type(df = dataset)
 
 df_data_type_counts
 
-
 ```
 
 Plot the results
 
 ```{r}
 
-
 plot_data_type <- plot_data.type_counts(df_data_type_counts)
 
-plot_data_type
-
 #ggsave("plots_repo/plot_data_type.png", height = 6, width = 9)
-
-
 
 ```
 
@@ -552,7 +490,7 @@ heights = c(1,1.22))
 
 plot_combined_corpus
 
-ggsave("plots_repo/plot_combined_corpus.png", height = 10, width = 12)
+#ggsave("plots_repo/plot_combined_corpus.png", height = 10, width = 12)
 ```
 
 V2
@@ -571,8 +509,9 @@ heights = c(1,1.22))
 
 plot_combined_corpus.v2
 
-ggsave("plots_repo/plot_combined_corpus.v2.png", height = 10, width = 12)
+#ggsave("plots_repo/plot_combined_corpus.v2.png", height = 10, width = 12)
 ```
+
 
 ## 7. Data format
 
@@ -626,114 +565,360 @@ print(paste("A total of", length(df_journals_counts$Journal), "journals" ))
 ```
 
 
-## Location information - temporal range
+
+# Location of information - features
+
+
+
+## % data type in abstract and title
+
+```{r}
+df_dataset_types <- read.csv("../data/dataset_types.csv", sep = ";")
+df_dataset_types
+```
+
+I will add the following synonyms:
+
+presence-absence: detection, capture
+
+EBV genetic analyses: 16S, 18S, genetic data, microsatelites, barcodes(?), haplotypes, eDNA, SNPs
+
+
+```{r}
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("presence-absence", "detection", "synonym")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("presence-absence", "capture", "synonym")
+
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "16S", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "18S", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "barcodes", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "haplotypes", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "eDNA", "methods")
+df_dataset_types[nrow(df_dataset_types)+1,] <- c("EBV genetic analyses", "SNPs", "methods")
+
+df_dataset_types
+```
+
+
+
+
+```{r}
+url <- c()
+dataset_type <- c()
+keyword_abs <- list()
+keyword_title <- list()
+#keyword_type <- c()
+in_title <- c()
+in_abstract <- c()
+
+
+
+for (i in 1:nrow(dataset)) {
+  
+  
+  
+  dataset_type[i] <- dataset[i, "data_type"]
+  url[i] <- dataset[i, "url"]
+  
+  
+  
+  
+  # search on the abstract and note the list of keywords that match the dataset types
+
+  keyword_abs[[i]] <- unique(get_keywords(input_string = dataset$full_text[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) == 0){
+    
+    in_abstract[i] <- "no"
+    
+  } else if (length(keyword_abs[i][!sapply(keyword_abs[i], is.null)]) > 0){
+    
+    in_abstract[i] <- "yes"
+    
+  }
+  
+  
+  
+
+  # search on the title and note the list of keywords that match the dataset types
+
+  keyword_title[[i]] <- unique(get_keywords(input_string = dataset$title[i], 
+               dataset_types =  df_dataset_types))
+  
+  # if the list of keywords has 1 or more entry, then note that we found information in the abstract
+  
+  if(length(keyword_title[i][!sapply(keyword_title[i], is.null)]) == 0){
+    
+    in_title[i] <- "no"
+    
+  } else if (length(keyword_title[i][!sapply(keyword_title[i], is.null)]) > 0){
+    
+    in_title[i] <- "yes"
+    
+  } 
+  
+  
+  
+}
+
+
+dataset$data.type_in_abstract <- in_abstract
+dataset$data_type_in_title <- in_title
+
+
+
+print(paste(length(which(in_abstract == "yes")), 
+            "with dataset type or synonym explicit in the abstract, out of", length(in_abstract)))
+
+print(paste("so", 
+      round(length(which(in_abstract == "yes"))/length(in_abstract)*100, 1),
+"%"))
+
+print(paste(length(which(in_title == "yes")), 
+            "with dataset type or synonym explicit in the title, out of", length(in_title)))
+
+print(paste("so", 
+      round(length(which(in_title == "yes"))/length(in_title)*100, 1),
+"%"))
+
+
+
+```
+
+
+
+
 
 
 ```{r}
 
-dataset_repos <- read_excel("df_repository.xlsx")
 
-dataset_repos <- dataset_repos[which(dataset_repos$title != ""),]
-dataset_repos <- dataset_repos %>% dplyr::filter(valid_yn == "yes")
+df_features.l <- dataset[,c("temporal_range_position", "temporal_duration_position", "spatial_range_position", "species_location", "data.type_in_abstract", "data_type_in_title")]
 
-tempr_position <- dataset_repos$temporal_range_position[-which(is.na(dataset_repos$temporal_range_position))]
+# add id
 
-tempr_position  <- unlist(strsplit(tempr_position,","))
+df_features.l$id <- c(1:nrow(df_features.l))
 
-tempr_position[which(tempr_position == " dataset")] <- gsub(" ", "", tempr_position[which(tempr_position == " dataset")])
 
-tempr_position[which(tempr_position == " source publication text")] <- "source publication text"
 
-tempr_position[which(tempr_position == " source link")] <- "source link"
+# separate by commas
+
+df_features.l1 <- df_features.l %>%               
+  separate_rows(temporal_range_position, sep=",") %>% 
+  separate_rows(temporal_duration_position, sep=",") %>% 
+  separate_rows(spatial_range_position, sep=",") %>% 
+  separate_rows(species_location, sep=",")
+
+
+
+# Homogenize levels
+
+levels(as.factor(df_features.l1$species_location))
+
+
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == " source link")] <- "repository text"
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == "source link")] <- "repository text"
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == "source link abstract")] <- "repository text"
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == " dataset")] <- "dataset"
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == " source publication text")] <- "article"
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == "source publication text")] <- "article"
+df_features.l1$temporal_range_position[which(df_features.l1$temporal_range_position == "no")] <- "not given"
+
+
+
+df_features.l1$temporal_duration_position[which(df_features.l1$temporal_duration_position == "source link")] <- "repository text"
+df_features.l1$temporal_duration_position[which(df_features.l1$temporal_duration_position == "source link abstract")] <- "repository text"
+df_features.l1$temporal_duration_position[which(df_features.l1$temporal_duration_position == "source publication text")] <- "article"
+df_features.l1$temporal_duration_position[which(df_features.l1$temporal_duration_position == "no")] <- "not given"
+
+
+
+df_features.l1$spatial_range_position[which(df_features.l1$spatial_range_position == "source link")] <- "repository text"
+df_features.l1$spatial_range_position[which(df_features.l1$spatial_range_position == "source link abstract")] <- "repository text"
+df_features.l1$spatial_range_position[which(df_features.l1$spatial_range_position == "source publication text")] <- "article"
+df_features.l1$spatial_range_position[which(df_features.l1$spatial_range_position == "no")] <- "not given"
+
+
+
+df_features.l1$species_location[which(df_features.l1$species_location == "source link abstract")] <- "repository text"
+df_features.l1$species_location[which(df_features.l1$species_location == "source publication text")] <- "article"
+df_features.l1$species_location[which(df_features.l1$species_location == " source publication text")] <- "article"
+
+
+df_features.l1
+
+```
+
+How many with all the features readily accessible (in repository text):
+
+```{r}
+n_all <- nrow(na.omit(df_features.l1[ 
+                   df_features.l1$data.type_in_abstract == "yes" & 
+                   df_features.l1$temporal_range_position == 'repository text' &
+                   df_features.l1$spatial_range_position == 'repository text',]))
+
+print(paste(n_all, "with all the features readily accessible (in the repository text) - a", round(n_all/nrow(dataset)*100, 3),"%"))
+
+```
+
+How many with at least one feature accessible
+
+```{r}
+
+df_features.l2 <- df_features.l1[!is.na(df_features.l1$data.type_in_abstract),]
+
+df_features.l2 <- df_features.l1[ 
+  df_features.l1$data_type_in_title == "yes" |
+                   df_features.l1$data.type_in_abstract == "yes" |
+                   df_features.l1$temporal_range_position == 'repository text' |
+                   df_features.l1$spatial_range_position == 'repository text', ]
+
+df_features.l2[!is.na(df_features.l2$data.type_in_abstract),]
+
+print(paste(n_any, "with at least one feature readily accessible (in the repository text) - a", round(n_any/nrow(dataset)*100, 3),"%"))
+
+```
+
+
+How many per feature type
+
+
+
+```{r}
+
+# temporal range
+
+dataset$id <- c(1:nrow(dataset))
+
+tempr_position <- dataset[,c("temporal_range_position","id")]
+
+tempr_position <- na.omit(tempr_position)
+
+
+print(paste(nrow(tempr_position), "analyzed for temp range position"))
+
+tempr_position <- tempr_position %>%               
+  separate_rows(temporal_range_position, sep=",") 
+
+
+tempr_position[which(tempr_position$temporal_range_position == " dataset"),"temporal_range_position"] <- "dataset"
+
+tempr_position[which(tempr_position$temporal_range_position == " source publication text"),"temporal_range_position"] <- "article"
+
+tempr_position[which(tempr_position$temporal_range_position == "source publication text"),"temporal_range_position"] <- "article"
+
+tempr_position[which(tempr_position$temporal_range_position == " source link"),"temporal_range_position"] <- "repository text"
+
+tempr_position[which(tempr_position$temporal_range_position == "source link"),"temporal_range_position"] <- "repository text"
+
+tempr_position[which(tempr_position$temporal_range_position == "source link abstract"),"temporal_range_position"] <- "repository text"
+
+tempr_position[which(tempr_position$temporal_range_position == "no"),"temporal_range_position"] <- "not given"
 
 tempr_position
 
 
 
-```
+# temporal duration
+
+dataset$id <- c(1:nrow(dataset))
+
+tempd_position <- dataset[,c("temporal_duration_position","id")]
+
+tempd_position <- na.omit(tempd_position)
 
 
-```{r}
+print(paste(nrow(tempd_position), "analyzed for temp range position"))
+
+tempd_position <- tempd_position %>%               
+  separate_rows(temporal_duration_position, sep=",") 
 
 
-tempd_position <- dataset_repos$temporal_duration_position[-which(is.na(dataset_repos$temporal_duration_position))]
-tempd_position  <- unlist(strsplit(tempd_position,","))
+tempd_position[which(tempd_position$temporal_duration_position == " dataset"),"temporal_duration_position"] <- "dataset"
+
+tempd_position[which(tempd_position$temporal_duration_position == " source publication text"),"temporal_duration_position"] <- "article"
+
+tempd_position[which(tempd_position$temporal_duration_position == "source publication text"),"temporal_duration_position"] <- "article"
+
+tempd_position[which(tempd_position$temporal_duration_position == " source link"),"temporal_duration_position"] <- "repository text"
+
+tempd_position[which(tempd_position$temporal_duration_position == "source link"),"temporal_duration_position"] <- "repository text"
+
+tempd_position[which(tempd_position$temporal_duration_position == "source link abstract"),"temporal_duration_position"] <- "repository text"
+
+tempd_position[which(tempd_position$temporal_duration_position == "no"),"temporal_duration_position"] <- "not given"
 
 tempd_position
 
-```
+
+# spatial range duration
+
+dataset$id <- c(1:nrow(dataset))
+
+spatialr_position <- dataset[,c("spatial_range_position","id")]
+
+spatialr_position <- na.omit(spatialr_position)
 
 
-```{r}
+print(paste(nrow(spatialr_position), "analyzed for temp range position"))
 
-spatr_position <- dataset_repos$spatial_range_position[-which(is.na(dataset_repos$spatial_range_position))]
-spatr_position  <- unlist(strsplit(spatr_position,","))
-
-spatr_position
-
-```
+spatialr_position <- spatialr_position %>%               
+  separate_rows(spatial_range_position, sep=",") 
 
 
-```{r}
+spatialr_position[which(spatialr_position$spatial_range_position == " dataset"),"spatial_range_position"] <- "dataset"
 
-feature <- rep("temporal range position", times = length(tempr_position))
+spatialr_position[which(spatialr_position$spatial_range_position == " source publication text"),"spatial_range_position"] <- "article"
 
-df_tempr <- data.frame(tempr_position, feature)
+spatialr_position[which(spatialr_position$spatial_range_position == "source publication text"),"spatial_range_position"] <- "article"
 
-feature <- rep("temporal duration position", times = length(tempd_position))
+spatialr_position[which(spatialr_position$spatial_range_position == " source link"),"spatial_range_position"] <- "repository text"
 
-df_tempd <- data.frame(tempd_position, feature)
+spatialr_position[which(spatialr_position$spatial_range_position == "source link"),"spatial_range_position"] <- "repository text"
 
-feature <- rep("Spatial range position", times = length(spatr_position))
+spatialr_position[which(spatialr_position$spatial_range_position == "source link abstract"),"spatial_range_position"] <- "repository text"
 
-df_spatr <- data.frame(spatr_position, feature)
-
-colnames(df_tempr) <- c("position", "feature")
-colnames(df_tempd) <- c("position", "feature")
-colnames(df_spatr) <- c("position", "feature")
-
-df_positions <- rbind(df_tempr,df_tempd,df_spatr)
-
-```
+spatialr_position[which(spatialr_position$spatial_range_position == "no"),"spatial_range_position"] <- "not given"
 
 
-```{r}
-
-levels(as.factor(df_positions$position))
-
-df_positions$position[which(df_positions$position == " source publication text")] <- "source publication text"
-df_positions$position[which(df_positions$position == "no")] <- "not given"
-
-df_positions$position <- factor(df_positions$position, levels=c("not given", "source publication text", "dataset", "source link", "source link abstract"))
-
-df_positions <- as.data.frame(table(df_positions))
-
-ggplot(df_positions, aes(x=position, fill = feature)) +
-geom_bar(position = "dodge") +  labs(x='Team')+
-  theme_bw() +
-  my.theme+
-  theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
-  scale_x_discrete(guide = guide_axis(n.dodge = 2))
-  #scale_fill_manual(values = c(""))
+ 
 
 
-levels(df_positions$feature)
 
-ggplot(df_positions, aes(x=position, y = Freq, group = feature, color = feature)) +
-   geom_segment( aes(x=position ,xend=position, y=0, yend=max(Freq)), color="grey") +
-    geom_point(size=4, alpha = 0.8) +
+df_tempr <- as.data.frame(table(tempr_position$temporal_range_position))
+df_tempr$feature <- rep("temporal range", times = nrow(df_tempr))
+
+df_tempd <- as.data.frame(table(tempd_position$temporal_duration_position))
+df_tempd$feature <- rep("temporal duration", times = nrow(df_tempd))
+
+df_spatr <- as.data.frame(table(spatialr_position$spatial_range_position))
+df_spatr$feature <- rep("spatial range", times = nrow(df_spatr))
+
+df_locations_plot <- rbind(df_tempr, df_tempd, df_spatr)
+
+colnames(df_locations_plot) <- c("location", "Freq", "feature")
+
+df_locations_plot$location <- factor(df_locations_plot$location, levels = c("not given", "article","dataset", "repository text"))
+
+
+ggplot(df_locations_plot, aes(x=location, y = Freq, group = feature)) +
+   geom_segment( aes(x=location ,xend=location, y=0, yend=max(Freq)), color="grey") +
+    geom_point(aes(shape = feature),size=4, alpha = 0.8) +
     coord_flip() +
   theme_bw() +
   my.theme+
-  scale_color_manual(values = c("deepskyblue2","firebrick1","indianred4"))+
-  scale_shape_manual(values = c(11,2,3))+
+  #scale_color_manual(values = c("deepskyblue2","firebrick1","indianred4"))+
+  scale_shape_manual(values = c(16,8,2))+
   ylab("publication counts")
 
-  
-ggsave("plots_repo/location_spat.temp.features_repos.png", height = 5, width = 9)
-
+#ggsave("plots_repo/location_features.png", height = 5, width = 9)
 
 ```
+
+
+
 
 
 
@@ -742,19 +927,12 @@ ggsave("plots_repo/location_spat.temp.features_repos.png", height = 5, width = 9
 
 ```{r}
 
-dataset_repos$geospatial_info_article_text
-dataset_repos$geospatial_info_dataset
-dataset_repos$geospatial_info_repo_page_text
 
+geospatial_info_article_text <- dataset$geospatial_info_article_text[-which(is.na(dataset$geospatial_info_article_text))]
 
+geospatial_info_dataset <- dataset$geospatial_info_dataset[-which(is.na(dataset$geospatial_info_dataset))]
 
-
-
-geospatial_info_article_text <- dataset_repos$geospatial_info_article_text[-which(is.na(dataset_repos$geospatial_info_article_text))]
-
-geospatial_info_dataset <- dataset_repos$geospatial_info_dataset[-which(is.na(dataset_repos$geospatial_info_dataset))]
-
-geospatial_info_repo_page_text <- dataset_repos$geospatial_info_repo_page_text[-which(is.na(dataset_repos$geospatial_info_repo_page_text))]
+geospatial_info_repo_page_text <- dataset$geospatial_info_repo_page_text[-which(is.na(dataset$geospatial_info_repo_page_text))]
 
 
 
@@ -836,6 +1014,8 @@ df_locations <- as.data.frame(table(df_locations))
 
 df_locations$location <- factor(df_locations$location, levels=c("article text", "repository page", "dataset"))
 
+df_locations$information <- factor(df_locations$information, levels=c("not given", "sites IDs", "map", "administrative unit", "geographic feature", "distribution model", "range coordinates", "site coordinates", "sample coordinates"))
+
 
 
 ggplot(df_locations, aes(x=information, y = Freq, group = location, color = location)) +
@@ -846,10 +1026,28 @@ ggplot(df_locations, aes(x=information, y = Freq, group = location, color = loca
   my.theme+
  scale_color_manual(values = c("blue4","red1","green4"))+
  # scale_shape_manual(values = c(11,2,3))+
-  ylab("publication counts")
+  ylab("publication counts")+
+  xlab("geospatial information")
 
   
-ggsave("plots_repo/location_type_geoinfo.png", height = 5, width = 9)
+#ggsave("plots_repo/location_type_geoinfo.png", height = 5, width = 9)
 
 
 ```
+
+
+
+```{r}
+length(dataset$data.type_in_abstract)
+
+dataset[dataset$data.type_in_abstract == "no" & dataset$data_type_in_title == "no",]
+
+length(dataset$data_type_in_title[dataset$data_type_in_title == "yes"])
+length(dataset$data.type_in_abstract[dataset$data.type_in_abstract == "yes"])
+```
+
+
+
+
+
+
