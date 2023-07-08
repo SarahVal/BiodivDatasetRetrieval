@@ -1113,5 +1113,131 @@ df_source_time <- function(df) {
 
 
 
+# Create dataset with counts of positions of features
+
+
+
+count_position_features <- function(df) {
+  
+  
+  # temporal range
+  
+  df$id <- c(1:nrow(df))
+  
+  tempr_position <- df[,c("temporal_range_position","id")]
+  
+  tempr_position <- na.omit(tempr_position)
+  
+  
+  print(paste(nrow(tempr_position), "analyzed for temp range position"))
+  
+  tempr_position <- tempr_position %>%               
+    separate_rows(temporal_range_position, sep=",") 
+  
+  
+  tempr_position[which(tempr_position$temporal_range_position == " dataset"),"temporal_range_position"] <- "dataset"
+  
+  tempr_position[which(tempr_position$temporal_range_position == " source publication text"),"temporal_range_position"] <- "article"
+  
+  tempr_position[which(tempr_position$temporal_range_position == "source publication text"),"temporal_range_position"] <- "article"
+  
+  tempr_position[which(tempr_position$temporal_range_position == " source link"),"temporal_range_position"] <- "repository text"
+  
+  tempr_position[which(tempr_position$temporal_range_position == "source link"),"temporal_range_position"] <- "repository text"
+  
+  tempr_position[which(tempr_position$temporal_range_position == "source link abstract"),"temporal_range_position"] <- "repository text"
+  
+  tempr_position[which(tempr_position$temporal_range_position == "no"),"temporal_range_position"] <- "not given"
+  
+  
+  
+  
+  
+  # temporal duration
+  
+  df$id <- c(1:nrow(df))
+  
+  tempd_position <- df[,c("temporal_duration_position","id")]
+  
+  tempd_position <- na.omit(tempd_position)
+  
+  
+  print(paste(nrow(tempd_position), "analyzed for temp range position"))
+  
+  tempd_position <- tempd_position %>%               
+    separate_rows(temporal_duration_position, sep=",") 
+  
+  
+  tempd_position[which(tempd_position$temporal_duration_position == " dataset"),"temporal_duration_position"] <- "dataset"
+  
+  tempd_position[which(tempd_position$temporal_duration_position == " source publication text"),"temporal_duration_position"] <- "article"
+  
+  tempd_position[which(tempd_position$temporal_duration_position == "source publication text"),"temporal_duration_position"] <- "article"
+  
+  tempd_position[which(tempd_position$temporal_duration_position == " source link"),"temporal_duration_position"] <- "repository text"
+  
+  tempd_position[which(tempd_position$temporal_duration_position == "source link"),"temporal_duration_position"] <- "repository text"
+  
+  tempd_position[which(tempd_position$temporal_duration_position == "source link abstract"),"temporal_duration_position"] <- "repository text"
+  
+  tempd_position[which(tempd_position$temporal_duration_position == "no"),"temporal_duration_position"] <- "not given"
+  
+  
+  
+  
+  
+  
+  # spatial range duration
+  
+  dataset$id <- c(1:nrow(dataset))
+  
+  spatialr_position <- dataset[,c("spatial_range_position","id")]
+  
+  spatialr_position <- na.omit(spatialr_position)
+  
+  
+  print(paste(nrow(spatialr_position), "analyzed for temp range position"))
+  
+  spatialr_position <- spatialr_position %>%               
+    separate_rows(spatial_range_position, sep=",") 
+  
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == " dataset"),"spatial_range_position"] <- "dataset"
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == " source publication text"),"spatial_range_position"] <- "article"
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == "source publication text"),"spatial_range_position"] <- "article"
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == " source link"),"spatial_range_position"] <- "repository text"
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == "source link"),"spatial_range_position"] <- "repository text"
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == "source link abstract"),"spatial_range_position"] <- "repository text"
+  
+  spatialr_position[which(spatialr_position$spatial_range_position == "no"),"spatial_range_position"] <- "not given"
+  
+  
+  
+  
+  df_tempr <- as.data.frame(table(tempr_position$temporal_range_position))
+  df_tempr$feature <- rep("temporal range", times = nrow(df_tempr))
+  
+  df_tempd <- as.data.frame(table(tempd_position$temporal_duration_position))
+  df_tempd$feature <- rep("temporal duration", times = nrow(df_tempd))
+  
+  df_spatr <- as.data.frame(table(spatialr_position$spatial_range_position))
+  df_spatr$feature <- rep("spatial range", times = nrow(df_spatr))
+  
+  df_locations_plot <- rbind(df_tempr, df_tempd, df_spatr)
+  
+  colnames(df_locations_plot) <- c("location", "Freq", "feature")
+  
+  df_locations_plot$location <- factor(df_locations_plot$location, levels = c("not given", "article","dataset", "repository text"))
+  
+  return(df_locations_plot)
+  
+}
+
+
 
 
