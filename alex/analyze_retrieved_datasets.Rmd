@@ -934,7 +934,7 @@ plot_relevance_source <- ggplot(df_rel_source_melt,
     xlab("relevance")+
     ylab("dataset counts") +
     scale_color_manual(values = c("#F8766D", "#00BA38","#619CFF", "grey40"))+
-   scale_shape_manual(values = c(15, 15, 15, 15))+
+   scale_shape_manual(values = c(8, 15, 8, 15))+
     my.theme+
   labs(color = "source")+
    scale_alpha_manual(values=c(0.8, 0.8, 0.8,0.5))
@@ -942,7 +942,7 @@ plot_relevance_source <- ggplot(df_rel_source_melt,
 
 plot_relevance_source
 
-#ggsave("plots_semantic_scholar/plot_relevance_source.png", height = 5, width = 8)
+ggsave("plots_semantic_scholar/plot_relevance_source.png", height = 5, width = 8)
 
 ```
 
