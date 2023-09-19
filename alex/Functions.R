@@ -727,12 +727,13 @@ plot_data.type_counts <- function(df) {
   
   df<- df[df$data_type_col != "genetic_analyses",]
   
-  df$data_type_col <- factor(df$data_type_col, levels = c("presence.only",
-                                                          "EBV_genetic",
-                                                          "abundance",
-                                                          "presence.absence",
+  
+  df$data_type_col <- factor(df$data_type_col, levels = c("other",
                                                           "distribution",
-                                                          "other"))
+                                                          "presence.absence",
+                                                          "abundance",
+                                                          "EBV_genetic",
+                                                          "presence.only"))
   
   plot <- ggdotchart(df, x = "data_type_col", y = "N_articles",
                                size = 5, 
@@ -741,18 +742,18 @@ plot_data.type_counts <- function(df) {
                                ylab = "N publications",
                                sorting = "none",
                                add.params = list(color = "lightgray", size = 1.3),
-                               position = position_dodge(0.45),
-                               ggtheme = theme_pubclean(),
+                               #position = position_dodge(),
+                               ggtheme = theme_pubclean()
                                #title = "Data type in retrieved datasets"
                      )+
-    theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2))+
-    scale_x_discrete(guide = guide_axis(n.dodge=2),labels=c("presence.only" = "presence only",
+   # theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2))+
+    scale_x_discrete(labels=c("presence.only" = "presence only",
                               "EBV_genetic" = "EBV genetic",
                               "abundance" = "abundance",
                               "presence.absence" = "presence-absence",
                               "distribution" = "distribution",
                               "other" = "other"))+
-    theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
+    #theme(axis.text.x = element_text(angle = 0, hjust=0.45,vjust=0.2))+
     ylim(0,max(df$N_articles))+
     my.theme
 

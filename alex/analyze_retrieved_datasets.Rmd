@@ -285,7 +285,7 @@ p_temp_range <- ggplot(dataset_temp_range, aes(y=url, color = time_series)) +
   geom_segment(aes(x=temp_range_i, xend=temp_range_f, y=url, yend=url), linewidth=3)+
   xlab("year") +
   ylab ("datasets")+
-  theme_bw() +
+  #theme_bw() +
   my.theme +
   theme(axis.text.y=element_blank())+
   scale_color_manual(values = c("gray37", "#F8766D"))+
@@ -397,9 +397,11 @@ Plot the results: Spatial ranges are divided according to the thresholds establi
 
 ```{r}
 
-plot_spatial_range_counts <- plot_spat.range_counts(dataset)
+plot_spatial_range_counts <- plot_spat.range_counts(dataset)+
+  coord_flip()
 
 plot_spatial_range_counts
+  
 
 #ggsave("plots_repo/plot_spatial_range_counts.png", height = 6, width = 6)
 
@@ -431,7 +433,8 @@ Plot the results
 
 ```{r}
 
-plot_data_type <- plot_data.type_counts(df_data_type_counts)
+plot_data_type <- plot_data.type_counts(df_data_type_counts)+
+  coord_flip()
 
 plot_data_type
 
@@ -445,17 +448,18 @@ plot_data_type
 
 plot_combined_corpus <- ggarrange(
 p_temp_range,
-plot_spatial_range_counts,
 plot_spatial_temporal_relevance,
+plot_spatial_range_counts,
 plot_data_type,
 nrow = 2,
 ncol = 2,
-  labels = c("A", "B", "C","D"),
-heights = c(1,1.22))
+  labels = c("a", "b", "c","d"),
+font.label = list(size = 21),
+heights = c(1,0.5))
 
 plot_combined_corpus
 
-#ggsave("plots_repo/plot_combined_corpus.png", height = 10, width = 12)
+ggsave("plots_repo/plot_combined_corpus.png", height = 10, width = 12)
 ```
 
 # 6. Data format
@@ -1028,7 +1032,9 @@ plot_spp <- ggplot(df_taxa_spp, aes(x = X1_10_spp, group = dataset_relevance, fi
     ylab("publications counts") +
     ggtitle("Species-level studies")+
     scale_fill_manual(name = "dataset relevance",
-                       values = alpha(c("red","purple2", "dodgerblue"), .7))
+                       values = alpha(c("red","purple2", "dodgerblue"), .7))+
+ # theme_bw()+
+    my.theme
 
 
 df_taxa$more_10spp[which(df_taxa$more_10spp == "Mammalia\xa0")] <- "Mammalia"
@@ -1036,18 +1042,30 @@ df_taxa$more_10spp[which(df_taxa$more_10spp == "Osteichthyes")] <- "Fish"
 df_taxa_comm <- df_taxa[which(df_taxa$more_10spp != ""),]
 
 
+
+
+df_taxa_comm$more_10spp <- as.factor(df_taxa_comm$more_10spp)
 df_taxa_comm$n <- as.numeric(df_taxa_comm$n)
 
+df_taxa_comm$n[which(df_taxa_comm$n == 1)] <- 2
+df_taxa_comm$n[which(df_taxa_comm$n == 2)] <- 3
+
+df_taxa_comm <- df_taxa_comm[order(-df_taxa_comm$n), ]
+
+
+df_taxa_comm$dataset_relevance <- factor(df_taxa_comm$dataset_relevance, levels = c("H", "M", "L"))
+
 plot_comm <- ggplot(df_taxa_comm, aes(x = more_10spp, y = n, fill = dataset_relevance)) +
-   geom_bar(stat = "identity", position = "dodge",  color = "white")+
-  my.theme+
+   geom_bar(stat = "identity", position = position_dodge2(preserve = "total"),  color = "white")+
   coord_flip()+
   ggtitle("Community-level studies")+
     xlab("")+
     ylab("N taxa") +
     scale_fill_manual(name = "dataset relevance",
                        values = alpha(c("red","purple2", "dodgerblue"), .7))+
-  scale_y_continuous(limits = c(0, 200), breaks = c(50, 100, 150,200))
+  scale_y_continuous(limits = c(0, max(df_taxa_comm$n)), breaks = c(25,50,75, 100, 125, 150, 175))+
+ # theme_bw()+
+    my.theme
 
 
 plots_taxa <- ggarrange(plot_spp,
