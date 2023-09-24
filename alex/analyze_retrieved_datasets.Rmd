@@ -449,13 +449,13 @@ plot_data_type
 plot_combined_corpus <- ggarrange(
 p_temp_range,
 plot_spatial_temporal_relevance,
-plot_spatial_range_counts,
 plot_data_type,
+plot_spatial_range_counts,
 nrow = 2,
 ncol = 2,
   labels = c("a", "b", "c","d"),
-font.label = list(size = 21),
-heights = c(1,0.5))
+font.label = list(size = 24),
+heights = c(1,0.6))
 
 plot_combined_corpus
 
@@ -839,19 +839,20 @@ df_locations$information <- factor(df_locations$information, levels=c("not given
 
 plot_location_type_geoinfo <- ggplot(df_locations, aes(x=information, y = Freq, group = location, color = location)) +
    geom_segment( aes(x=information ,xend=information, y=0, yend=max(Freq)), color="grey") +
-    geom_point(size=4, alpha = 0.5) +
+    geom_point(size=4, alpha = 0.5, aes(shape = location)) +
     coord_flip() +
   theme_bw() +
   my.theme+
- scale_color_manual(values = c("blue4","red1","green4"))+
- # scale_shape_manual(values = c(11,2,3))+
+  scale_shape_manual(values = c(15,8,21))+
+  scale_color_manual(values = c("black", "black", "black"))+
   ylab("publication counts")+
   xlab("geospatial information")
+
 
 plot_location_type_geoinfo
 
   
-#ggsave("plots_repo/location_type_geoinfo.png", height = 5, width = 9)
+ggsave("plots_repo/location_type_geoinfo.png", height = 5, width = 9)
 
 
 ```
@@ -906,11 +907,14 @@ dataset_repos_semantic<- read.csv("../data/merged_datasets.csv", header = TRUE,s
 dataset_repos_semantic <- dataset_repos_semantic[which(dataset_repos_semantic$title != ""),]
 dataset_repos_semantic <- dataset_repos_semantic %>% dplyr::filter(valid_yn == "yes")
 
+dataset_repos_semantic$dataset_relevance[which(dataset_repos_semantic$dataset_relevance == "cant access")] <- "No access"
+
 df_rel_source <- count_relevance_by_source(df = dataset_repos_semantic)
 
 df_rel_source$repositories <- df_rel_source$dryad + df_rel_source$zenodo
 
 df_rel_source
+
 
 ```
 
@@ -920,6 +924,7 @@ Plot the results:
 
 df_rel_source_melt <- melt(df_rel_source, id ="relevance")
 colnames(df_rel_source_melt) <- c("relevance", "source", "value")
+df_rel_source_melt$relevance[which(df_rel_source_melt$relevance== "cant access")]
 
 plot_relevance_source <- ggplot(df_rel_source_melt, 
                                           aes(x=relevance, y=value, group = source, 
@@ -941,7 +946,8 @@ plot_relevance_source <- ggplot(df_rel_source_melt,
    scale_shape_manual(values = c(8, 15, 8, 15))+
     my.theme+
   labs(color = "source")+
-   scale_alpha_manual(values=c(0.8, 0.8, 0.8,0.5))
+   scale_alpha_manual(values=c(0.8, 0.8, 0.8,0.5))+
+  theme(legend.position="right")
 
 
 plot_relevance_source
@@ -969,10 +975,12 @@ plot_data.type_format(dataset1)
 ```{r}
 
 
-dataset_st <- dataset_repos_semantic[which(dataset_repos_semantic$dataset_relevance != c("No dataset", "cant access", "X", "")),]
+dataset_st <- dataset_repos_semantic[which(dataset_repos_semantic$dataset_relevance != c("No dataset", "No access", "X", "")),]
+
+dataset_st
 
 dataset_st <- dataset_st[dataset_st$dataset_relevance != "No dataset",]
-dataset_st <- dataset_st[dataset_st$dataset_relevance != "cant access",]
+dataset_st <- dataset_st[dataset_st$dataset_relevance != "No access",]
 dataset_st <- dataset_st[dataset_st$dataset_relevance != "X",]
 dataset_st <- dataset_st[dataset_st$dataset_relevance != "",]
 
@@ -996,7 +1004,8 @@ plot_source_time <- ggplot(df_plot_source_time, aes(x = year, y = N, group = sou
   my.theme+
   theme(axis.text.x = element_text(angle = 0, hjust=0.95,vjust=0.2, size = 9))+
   ylab("N retrieved datasets") +
-  scale_x_discrete(guide = guide_axis(n.dodge=2))
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  theme(legend.position="right")
 
 plot_source_time
 
@@ -1005,6 +1014,20 @@ plot_source_time
 
 ```
 
+```{r}
+
+plots_semantic_repos <- ggarrange(
+  plot_relevance_source,
+  plot_source_time,
+  labels = c("a", "b"),
+  font.label = list(size = 24),
+  ncol = 1,
+  nrow = 2
+)
+
+ggsave("plots_semantic_scholar/semantic_repos_comparison.png", height = 9, width = 9)
+
+```
 
 
 # 11. Taxa (repos)

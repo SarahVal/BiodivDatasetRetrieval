@@ -30,7 +30,7 @@ count_relevance_by_source <- function(df) {
   
   rownames(df_relevance_source1) <- NULL
   
-  df_relevance_source1$relevance <- factor(df_relevance_source1$relevance, levels = c("H", "M", "L", "X", "No dataset", "cant access"))
+  df_relevance_source1$relevance <- factor(df_relevance_source1$relevance, levels = c("H", "M", "L", "X", "No dataset", "No access"))
   
   df_relevance_source2 <- df_relevance_source1[order(df_relevance_source1$relevance), ]
   
